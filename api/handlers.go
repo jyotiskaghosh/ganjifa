@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"time"
 
-	"ganjifa-web-sim/db"
-	"ganjifa-web-sim/game"
-	"ganjifa-web-sim/game/match"
-	"ganjifa-web-sim/server"
+	"github.com/jyotiskaghosh/ganjifa/db"
+	"github.com/jyotiskaghosh/ganjifa/game"
+	"github.com/jyotiskaghosh/ganjifa/game/match"
+	"github.com/jyotiskaghosh/ganjifa/server"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

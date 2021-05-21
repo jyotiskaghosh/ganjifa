@@ -9,24 +9,8 @@
         <li class="no-cursor">|</li>
         <li @click="$router.push('logout')">Logout</li>
         <li class="no-cursor">|</li>
-        <li>
-          <a target="_blank" href="https://patreon.com/shobu"
-            ><img class="patreon-btn" src="/assets/images/patreon.png"
-          /></a>
-        </li>
       </ul>
     </nav>
-
-    <div class="psa">
-      <span
-        >Join our
-        <a target="_blank" href="https://discord.gg/R3gJrX2">discord</a> to
-        contribute with feedback and suggestions. Consider supporting us on
-        <a target="_blank" style="color: #E66351" href="https://patreon.com/shobu">
-        patreon</a> if you like what we're doing ❤️
-        </span
-      >
-    </div>
   </div>
 </template>
 
@@ -204,17 +188,5 @@ a {
 
 .btn:active {
   background: #5b6eae !important;
-}
-
-.patreon-btn {
-  width: 125px;
-  margin-bottom: -10px;
-  border-radius: 4px;
-  margin-right: -3px;
-  opacity: 0.9;
-}
-
-.patreon-btn:hover {
-  opacity: 1;
 }
 </style>

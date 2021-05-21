@@ -3,10 +3,11 @@ package game
 import (
 	"encoding/json"
 	"fmt"
-	"ganjifa-web-sim/game/match"
-	"ganjifa-web-sim/server"
 	"sync"
 	"time"
+
+	"github.com/jyotiskaghosh/ganjifa/game/match"
+	"github.com/jyotiskaghosh/ganjifa/server"
 
 	"github.com/sirupsen/logrus"
 )

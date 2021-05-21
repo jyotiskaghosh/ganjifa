@@ -3,7 +3,7 @@ package api
 import (
 	"sync"
 
-	"github.com/jyotiskaghosh/ganjifa/cards"
+	"github.com/jyotiskaghosh/ganjifa/game-api/cards"
 
 	"github.com/sirupsen/logrus"
 )

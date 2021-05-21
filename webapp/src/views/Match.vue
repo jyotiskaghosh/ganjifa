@@ -228,7 +228,7 @@
           <div
             v-for="(card, index) in state.opponent.spellzone"
             :key="index"
-            class="set spell flipped"
+            class="set-card"
           >
             <img src="/assets/cards/backside.png" />
           </div>
@@ -341,7 +341,7 @@
           <div
             v-for="(card, index) in state.me.spellzone"
             :key="index"
-            class="set spell"
+            class="set-card"
           >
             <img src="/assets/cards/backside.png" />
           </div>
@@ -495,7 +495,7 @@ export default {
       if (!this.action || !this.action.cancellable) {
         return;
       }
-      this.ws.send(JSON.stringify({ header: "action", cancel: true }));
+      this.ws.send(JSON.stringify({ header: "cancel"}));
     },
 
     chooseAction() {
@@ -574,6 +574,7 @@ export default {
         })
       );
     },
+    
     attackCreature() {
       if (!this.playzoneSelection) {
         return;
@@ -1182,26 +1183,13 @@ export default {
   margin-right: 35px;
 }
 
-.shield {
+.set-card {
   img {
     height: 8.5vh;
   }
 }
 
 .spellzone {
-  overflow: auto;
-  white-space: nowrap;
-  overflow-y: hidden;
-  height: 10vh;
-}
-
-.mana {
-  img {
-    height: 8.5vh;
-  }
-}
-
-.manazone {
   overflow: auto;
   white-space: nowrap;
   overflow-y: hidden;

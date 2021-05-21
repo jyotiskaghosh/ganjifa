@@ -1,6 +1,6 @@
 package server
 
-import "ganjifa-web-sim/db"
+import "github.com/jyotiskaghosh/ganjifa/db"
 
 // Message is the default message struct
 type Message struct {

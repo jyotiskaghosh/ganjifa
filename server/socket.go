@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"ganjifa-web-sim/db"
+	"github.com/jyotiskaghosh/ganjifa/db"
 
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"

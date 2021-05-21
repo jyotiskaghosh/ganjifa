@@ -1,4 +1,4 @@
-module ganjifa-web-sim
+module github.com/jyotiskaghosh/ganjifa
 
 go 1.13
 
@@ -11,7 +11,6 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/jinzhu/gorm v1.9.12 // indirect
 	github.com/joho/godotenv v1.3.0
-	github.com/jyotiskaghosh/ganjifa v0.0.0-20210416121956-e0cb1d00aa00
 	github.com/kisielk/errcheck v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.8.0
 	github.com/teris-io/shortid v0.0.0-20171029131806-771a37caa5cf // indirect

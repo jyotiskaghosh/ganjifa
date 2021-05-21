@@ -5,12 +5,12 @@ import (
 	"os"
 	"time"
 
-	"ganjifa-web-sim/api"
-	"ganjifa-web-sim/db"
-	"ganjifa-web-sim/game"
+	"github.com/jyotiskaghosh/ganjifa/api"
+	"github.com/jyotiskaghosh/ganjifa/db"
+	"github.com/jyotiskaghosh/ganjifa/game"
 
-	"github.com/jyotiskaghosh/ganjifa/cards"
-	"github.com/jyotiskaghosh/ganjifa/match"
+	"github.com/jyotiskaghosh/ganjifa/game-api/cards"
+	"github.com/jyotiskaghosh/ganjifa/game-api/match"
 
 	"github.com/sirupsen/logrus"
 )

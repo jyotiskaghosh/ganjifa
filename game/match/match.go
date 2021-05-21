@@ -4,12 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"ganjifa-web-sim/db"
-	"ganjifa-web-sim/server"
 	"sync"
 	"time"
 
-	"github.com/jyotiskaghosh/ganjifa/match"
+	"github.com/jyotiskaghosh/ganjifa/db"
+	"github.com/jyotiskaghosh/ganjifa/server"
+
+	"github.com/jyotiskaghosh/ganjifa/game-api/match"
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/google/uuid"
