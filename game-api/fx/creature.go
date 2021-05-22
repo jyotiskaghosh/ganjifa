@@ -14,7 +14,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 	// Untap the card
 	if _, ok := ctx.Event.(*match.UntapStep); ok && card.Player.IsPlayerTurn() {
 
-		card.Tapped = false
+		card.Tap(false)
 		card.ClearConditions()
 	}
 
@@ -60,9 +60,9 @@ func Creature(card *match.Card, ctx *match.Context) {
 				return
 			}
 
-			card.Tapped = event.Creature.Tapped
+			card.Tap(event.Creature.Tapped())
 
-			card.Attach(event.Creature)
+			event.Creature.AttachTo(card)
 
 			ctx.Match.Chat("Server", fmt.Sprintf("%s summoned %s to the battle zone", card.Player.Name(), card.Name))
 
@@ -74,7 +74,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 	// Attack the player
 	if event, ok := ctx.Event.(*match.AttackPlayer); ok && event.ID == card.ID {
 
-		if card.Tapped || card.Zone != match.BATTLEZONE {
+		if card.Tapped() || card.Zone != match.BATTLEZONE {
 			ctx.InterruptFlow()
 			return
 		}
@@ -85,7 +85,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 			opponent := ctx.Match.Opponent(card.Player)
 
 			react(card, ctx, opponent, func() {
-				card.Tapped = true
+				card.Tap(true)
 				opponent.Damage(card, ctx, card.GetAttack(ctx))
 			})
 		})
@@ -94,7 +94,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 	// Attack a creature
 	if event, ok := ctx.Event.(*match.AttackCreature); ok && event.ID == card.ID {
 
-		if card.Tapped || card.Zone != match.BATTLEZONE {
+		if card.Tapped() || card.Zone != match.BATTLEZONE {
 			ctx.InterruptFlow()
 			return
 		}
@@ -116,15 +116,15 @@ func Creature(card *match.Card, ctx *match.Context) {
 	}
 
 	// When blocking
-	if event, ok := ctx.Event.(*match.BlockEvent); ok && event.Blocker == card {
+	if event, ok := ctx.Event.(*match.Block); ok && event.Blocker == card {
 
-		if card.Tapped || card.Zone != match.BATTLEZONE {
+		if card.Tapped() || card.Zone != match.BATTLEZONE {
 			ctx.InterruptFlow()
 			return
 		}
 
 		ctx.Override(func() {
-			event.Blocker.Tapped = true
+			event.Blocker.Tap(true)
 			ctx.Match.Battle(event.Attacker, card, true)
 		})
 	}
@@ -137,6 +137,14 @@ func Creature(card *match.Card, ctx *match.Context) {
 				logrus.Debug(err)
 			}
 		})
+	}
+
+	// When moving
+	if event, ok := ctx.Event.(*match.CardMoved); ok && event.ID == card.ID {
+
+		if card.Zone == match.SOUL && event.To != match.SOUL {
+			card.Detach()
+		}
 	}
 }
 
@@ -152,7 +160,7 @@ func react(card *match.Card, ctx *match.Context, opponent *match.Player, f func(
 	blockers := make([]*match.Card, 0)
 
 	for _, c := range opponent.GetCreatures() {
-		if !c.Tapped {
+		if !c.Tapped() {
 			blockers = append(blockers, c)
 		}
 	}
@@ -190,7 +198,12 @@ func react(card *match.Card, ctx *match.Context, opponent *match.Player, f func(
 
 					} else {
 
-						ctx.Match.Block(card, c)
+						blockCtx := match.NewContext(ctx.Match, &match.Block{
+							Attacker: card,
+							Blocker:  c,
+						})
+
+						ctx.Match.HandleFx(blockCtx)
 
 						ctx.Match.ResolveEvent(ctx)
 

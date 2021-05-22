@@ -53,6 +53,7 @@ type Player struct {
 	life       int
 
 	mutex *sync.Mutex
+
 	ready bool
 
 	turn   bool
@@ -274,7 +275,6 @@ func (p *Player) GetCard(id string) (*Card, error) {
 func (p *Player) Damage(source *Card, ctx *Context, health int) {
 
 	if health <= 0 {
-		ctx.InterruptFlow()
 		return
 	}
 
@@ -295,7 +295,7 @@ func (p *Player) Damage(source *Card, ctx *Context, health int) {
 	})
 
 	ctx.ScheduleAfter(func() {
-		p.match.Chat("Server", fmt.Sprintf("%s did %d damage to player %s", source.Name, health, p.Name()))
+		ctx.Match.Chat("Server", fmt.Sprintf("%s did %d damage to player %s", source.Name, health, p.Name()))
 	})
 
 	ctx.Match.HandleFx(ctx)
@@ -303,7 +303,7 @@ func (p *Player) Damage(source *Card, ctx *Context, health int) {
 	ctx.Match.BroadcastState()
 
 	if p.life <= 0 {
-		p.match.End(p.match.Opponent(p), fmt.Sprintf("%s has no life left", p.Name()))
+		ctx.Match.End(p.match.Opponent(p), fmt.Sprintf("%s has no life left", p.Name()))
 	}
 }
 
@@ -311,7 +311,6 @@ func (p *Player) Damage(source *Card, ctx *Context, health int) {
 func (p *Player) Heal(source *Card, ctx *Context, health int) {
 
 	if health <= 0 {
-		ctx.InterruptFlow()
 		return
 	}
 
@@ -319,7 +318,6 @@ func (p *Player) Heal(source *Card, ctx *Context, health int) {
 		&HealEvent{
 			Player: p,
 			Source: source,
-			Event:  ctx.Event,
 			Health: health,
 		})
 
@@ -332,7 +330,7 @@ func (p *Player) Heal(source *Card, ctx *Context, health int) {
 	})
 
 	ctx.ScheduleAfter(func() {
-		p.match.Chat("Server", fmt.Sprintf("%s healed %d life for player %s", source.Name, health, p.Name()))
+		ctx.Match.Chat("Server", fmt.Sprintf("%s healed %d life for player %s", source.Name, health, p.Name()))
 	})
 
 	ctx.Match.HandleFx(ctx)
@@ -375,7 +373,7 @@ func denormalizeCards(cards []*Card) []CardState {
 			UID:           card.CardID,
 			Name:          card.Name,
 			Civ:           card.Civ,
-			Tapped:        card.Tapped,
+			Tapped:        card.tapped,
 			AttachedCards: denormalizeCards(card.Attachments()),
 		}
 

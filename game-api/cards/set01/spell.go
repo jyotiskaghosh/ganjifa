@@ -181,13 +181,15 @@ func Degenerate() *match.Card {
 						return
 					}
 
-					creatures[0].AttachedTo = nil
-					creatures[0].Attach(c.Attachments()...)
+					creatures[0].Detach()
 
-					ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name, card.Name))
-					if err := c.MoveCard(match.BATTLEZONE); err != nil {
+					if err := creatures[0].MoveCard(match.BATTLEZONE); err != nil {
 						logrus.Debug(err)
 					}
+
+					c.AttachTo(creatures[0])
+
+					ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name, card.Name))
 				}
 			})
 		}
@@ -237,7 +239,7 @@ func RapidEvolution() *match.Card {
 
 	c := &match.Card{
 		Name:   "Rapid Evolution",
-		Rank:   1,
+		Rank:   0,
 		Civ:    civ.PRITHVI,
 		Family: family.Spell,
 	}
@@ -254,10 +256,11 @@ func RapidEvolution() *match.Card {
 					1,
 					1,
 					false,
-					func(x *match.Card) bool { return x.HasCondition(fx.CantEvolve) })
+					func(x *match.Card) bool { return !x.Tapped() && x.HasCondition(fx.CantEvolve) })
 
 				for _, c := range creatures {
 					c.RemoveCondition(fx.CantEvolve)
+					c.Tap(true)
 				}
 			})
 		}
@@ -345,6 +348,7 @@ func Whirlwind() *match.Card {
 					if err := c.MoveCard(match.GRAVEYARD); err != nil {
 						logrus.Debug(err)
 					}
+					ctx.Match.Chat("Server", fmt.Sprintf("%s was moved to %s %s by %s", c.Name, c.Player.Name(), match.GRAVEYARD, card.Name))
 				}
 			})
 		}
@@ -413,6 +417,7 @@ func Tornado() *match.Card {
 					if err := c.MoveCard(match.DECK); err != nil {
 						logrus.Debug(err)
 					}
+					ctx.Match.Chat("Server", fmt.Sprintf("%s was moved to %s %s by %s", c.Name, c.Player.Name(), match.DECK, card.Name))
 				}
 			})
 		}
@@ -443,11 +448,11 @@ func FrostBreath() *match.Card {
 					1,
 					1,
 					false,
-					func(x *match.Card) bool { return !x.Tapped },
+					func(x *match.Card) bool { return !x.Tapped() },
 				)
 
 				for _, c := range creatures {
-					c.Tapped = true
+					c.Tap(true)
 				}
 			})
 		}
@@ -517,7 +522,7 @@ func Blizzard() *match.Card {
 			ctx.Override(func() {
 
 				for _, c := range ctx.Match.Opponent(card.Player).GetCreatures() {
-					c.Tapped = true
+					c.Tap(true)
 				}
 			})
 		}

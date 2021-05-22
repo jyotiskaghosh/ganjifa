@@ -24,10 +24,10 @@ type Card struct {
 	Attack  int
 	Defence int
 
-	Tapped bool
+	tapped bool
 
 	handlers   []HandlerFunc
-	AttachedTo *Card
+	attachedTo *Card
 
 	conditions []HandlerFunc // temporary handlers
 
@@ -62,6 +62,20 @@ func NewCard(p *Player, cardID int) (*Card, error) {
 // Can be compared to a typical middleware function
 func (c *Card) Use(handlers ...HandlerFunc) {
 	c.handlers = append(c.handlers, handlers...)
+}
+
+// Tap taps or untaps based on the bool value passed
+func (c *Card) Tap(tap bool) {
+
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	c.tapped = tap
+}
+
+// Tapped returns if card is tapped
+func (c *Card) Tapped() bool {
+	return c.tapped
 }
 
 // Conditions returns all conditions
@@ -117,6 +131,11 @@ func (c *Card) ClearConditions() {
 	c.conditions = make([]HandlerFunc, 0)
 }
 
+// AttachedTo returns the card that this card is attached to
+func (c *Card) AttachedTo() *Card {
+	return c.attachedTo
+}
+
 // Attachments returns a copy of the card's attached cards
 func (c *Card) Attachments() []*Card {
 
@@ -129,7 +148,7 @@ func (c *Card) Attachments() []*Card {
 	}
 
 	for _, card := range cards {
-		if card.AttachedTo == c {
+		if card.attachedTo == c {
 			result = append(result, card)
 		}
 	}
@@ -137,18 +156,21 @@ func (c *Card) Attachments() []*Card {
 	return result
 }
 
-// Attach attaches card to c
-func (c *Card) Attach(toAttach ...*Card) {
+// AttachTo attaches c to card
+func (c *Card) AttachTo(card *Card) {
 
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
-	for _, card := range toAttach {
-		card.AttachedTo = c
-		if err := card.MoveCard(SOUL); err != nil {
-			logrus.Debug(err)
-		}
+	c.attachedTo = card
+	if err := c.MoveCard(SOUL); err != nil {
+		logrus.Debug(err)
 	}
+}
+
+// Detach detaches a card
+func (c *Card) Detach() {
+	c.attachedTo = nil
 }
 
 // MoveCard tries to move a card to container b
@@ -191,7 +213,9 @@ func (c *Card) MoveCard(destination Container) error {
 	}))
 
 	for _, card := range c.Attachments() {
-		card.AttachedTo = c.AttachedTo
+
+		card.attachedTo = c.attachedTo
+
 		card.Player.match.HandleFx(NewContext(card.Player.match, &CardMoved{
 			ID:   card.ID,
 			From: card.Zone,

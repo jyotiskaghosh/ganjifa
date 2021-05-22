@@ -17,6 +17,7 @@ type Match struct {
 	mutex *sync.Mutex
 
 	started bool
+	wait    bool // wait prevents other moves from executing, used to prevent race conditions
 
 	winner *Player
 	Quit   chan bool
@@ -118,6 +119,11 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 
 	case "choose_deck":
 		{
+			if m.started {
+				Warn(pr, "match started cannot choose deck again")
+				return
+			}
+
 			msg := CreateDeck{}
 			if err := json.Unmarshal(data, &msg); err != nil {
 				return
@@ -141,6 +147,14 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
+			if m.wait {
+				Warn(pr, "waiting for players to make an action")
+				return
+			}
+
+			m.Wait(true)
+			defer m.Wait(false)
+
 			m.EndTurn()
 		}
 
@@ -149,6 +163,14 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 			if !pr.Player.turn {
 				return
 			}
+
+			if m.wait {
+				Warn(pr, "waiting for players to make an action")
+				return
+			}
+
+			m.Wait(true)
+			defer m.Wait(false)
 
 			var msg struct {
 				ID string `json:"id"`
@@ -177,6 +199,14 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 			if !pr.Player.turn {
 				return
 			}
+
+			if m.wait {
+				Warn(pr, "waiting for players to make an action")
+				return
+			}
+
+			m.Wait(true)
+			defer m.Wait(false)
 
 			var msg struct {
 				ID string `json:"id"`
@@ -221,7 +251,20 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 
 	case "attack_player":
 		{
-			if !pr.Player.turn || (pr.Player.turnNo == 1 && pr == m.player1) {
+			if !pr.Player.turn {
+				return
+			}
+
+			if m.wait {
+				Warn(pr, "waiting for players to make an action")
+				return
+			}
+
+			m.Wait(true)
+			defer m.Wait(false)
+
+			if pr.Player.turnNo == 1 && pr == m.player1 {
+				Warn(pr, "player 1 can't attack on first turn")
 				return
 			}
 
@@ -238,7 +281,20 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 
 	case "attack_creature":
 		{
-			if !pr.Player.turn || (pr.Player.turnNo == 1 && pr == m.player1) {
+			if !pr.Player.turn {
+				return
+			}
+
+			if m.wait {
+				Warn(pr, "waiting for players to make an action")
+				return
+			}
+
+			m.Wait(true)
+			defer m.Wait(false)
+
+			if pr.Player.turnNo == 1 && pr == m.player1 {
+				Warn(pr, "player 1 can't attack on first turn")
 				return
 			}
 
@@ -340,51 +396,33 @@ func (m *Match) WarnPlayer(p *Player, message string) {
 	Warn(pr, message)
 }
 
-// Evolve Fires a Evolve event
-func (m *Match) Evolve(id string, creature *Card) {
-
-	m.HandleFx(NewContext(m, &Evolve{
-		ID:       id,
-		Creature: creature,
-	}))
-}
-
-// Equip Fires a Equip event
-func (m *Match) Equip(id string, creature *Card) {
-
-	m.HandleFx(NewContext(m, &Equip{
-		ID:       id,
-		Creature: creature,
-	}))
-}
-
 // Battle handles a battle between two creatures
 func (m *Match) Battle(attacker *Card, defender *Card, blocked bool) {
 
-	attacker.Tapped = true
+	attacker.Tap(true)
 
 	ctx := NewContext(m, &Battle{Attacker: attacker, Defender: defender, Blocked: blocked})
 
+	ctx.Override(func() {
+		if attacker.GetAttack(ctx) > defender.GetDefence(ctx) {
+			m.Destroy(defender, attacker, fmt.Sprintf("%s was destroyed by %s", defender.Name, attacker.Name))
+		}
+	})
+
 	m.HandleFx(ctx)
-
-	if ctx.Cancelled() {
-		m.Chat("Server", "battle was cancelled")
-		return
-	}
-
-	if attacker.GetAttack(ctx) > defender.GetDefence(ctx) {
-		m.Destroy(defender, attacker, fmt.Sprintf("%s was destroyed by %s", defender.Name, attacker.Name))
-	}
 
 	m.BroadcastState()
 }
 
 // Destroy sends the given card to its players graveyard
 func (m *Match) Destroy(card *Card, source *Card, text string) {
+
 	ctx := NewContext(m, &CreatureDestroyed{Card: card, Source: source})
+
 	ctx.ScheduleAfter(func() {
 		m.Chat("Server", text)
 	})
+
 	m.HandleFx(ctx)
 }
 
@@ -444,20 +482,20 @@ func (m *Match) HandleFx(ctx *Context) {
 		h()
 	}
 
-	if ctx.mainFx != nil {
+	if ctx.cancel {
+		return
+	}
 
-		if ctx.cancel {
-			return
-		}
+	if ctx.mainFx != nil {
 
 		ctx.mainFx()
 	}
 
-	for _, h := range ctx.postFxs {
+	if ctx.cancel {
+		return
+	}
 
-		if ctx.cancel {
-			return
-		}
+	for _, h := range ctx.postFxs {
 
 		h()
 	}
@@ -563,6 +601,7 @@ func (m *Match) ShowCards(p *Player, message string, cards []string) {
 
 // changeCurrentPlayer changes the current player
 func (m *Match) changeCurrentPlayer() {
+
 	m.player1.Player.mutex.Lock()
 	m.player1.Player.turn = !m.player1.Player.turn
 	m.player1.Player.mutex.Unlock()
@@ -574,6 +613,9 @@ func (m *Match) changeCurrentPlayer() {
 
 // Start starts the match
 func (m *Match) Start() {
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
 
 	m.started = true
 
@@ -589,6 +631,15 @@ func (m *Match) Start() {
 	m.changeCurrentPlayer()
 
 	m.BeginNewTurn()
+}
+
+// Wait assigns bool value to m.wait
+func (m *Match) Wait(wait bool) {
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	m.wait = wait
 }
 
 // BeginNewTurn starts a new.turn
@@ -698,11 +749,6 @@ func (m *Match) React(id string, event interface{}) {
 // AttackPlayer is called when the player attempts to attack the opposing player
 func (m *Match) AttackPlayer(pr *PlayerReference, id string) {
 
-	if !pr.Player.HasCard(BATTLEZONE, id) {
-		Warn(pr, "The creature you tried to attack with is not in the battlezone")
-		return
-	}
-
 	ctx := NewContext(m, &AttackPlayer{
 		ID: id,
 	})
@@ -715,36 +761,9 @@ func (m *Match) AttackPlayer(pr *PlayerReference, id string) {
 // AttackCreature is called when the player attempts to attack the opposing player
 func (m *Match) AttackCreature(pr *PlayerReference, id string, targetID string) {
 
-	if !pr.Player.HasCard(BATTLEZONE, id) {
-		Warn(pr, "The creature you tried to attack with is not in the battlezone")
-		return
-	}
-
-	if !m.Opponent(pr.Player).HasCard(BATTLEZONE, targetID) {
-		Warn(pr, "The creature you tried to attack is not in the battlezone")
-		return
-	}
-
 	ctx := NewContext(m, &AttackCreature{
 		ID:       id,
 		TargetID: targetID,
-	})
-
-	m.HandleFx(ctx)
-
-	m.BroadcastState()
-}
-
-// Block is called when the player attempts to block an incoming attack with one of his creaturs
-func (m *Match) Block(attacker *Card, blocker *Card) {
-
-	if attacker.Zone != BATTLEZONE || blocker.Zone != BATTLEZONE {
-		return
-	}
-
-	ctx := NewContext(m, &BlockEvent{
-		Attacker: attacker,
-		Blocker:  blocker,
 	})
 
 	m.HandleFx(ctx)

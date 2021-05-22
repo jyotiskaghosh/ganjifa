@@ -14,17 +14,19 @@ import (
 func Salavrka() *match.Card {
 
 	c := &match.Card{
-		Name:   "Salavrka",
-		Rank:   0,
-		Civ:    civ.PRITHVI,
-		Family: family.Beast,
+		Name:    "Salavrka",
+		Rank:    0,
+		Civ:     civ.PRITHVI,
+		Family:  family.Beast,
+		Attack:  100,
+		Defence: 100,
 	}
 
 	c.Use(fx.Creature, func(card *match.Card, ctx *match.Context) {
 
 		if creatures, err := card.Player.Container(match.BATTLEZONE); err == nil {
 			for _, c := range creatures {
-				if c.Family == family.Beast {
+				if c != card && c.Family == family.Beast {
 					fx.AttackModifier(card, ctx, 100)
 					fx.DefenceModifier(card, ctx, 100)
 				}

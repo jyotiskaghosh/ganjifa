@@ -22,12 +22,12 @@ func Equipment(card *match.Card, ctx *match.Context) {
 		})
 	}
 
-	if event, ok := ctx.Event.(*match.GetAttackEvent); ok && card.AttachedTo == event.Card {
+	if event, ok := ctx.Event.(*match.GetAttackEvent); ok && card.AttachedTo() == event.Card {
 
 		event.Attack += card.Attack
 	}
 
-	if event, ok := ctx.Event.(*match.GetDefenceEvent); ok && card.AttachedTo == event.Card {
+	if event, ok := ctx.Event.(*match.GetDefenceEvent); ok && card.AttachedTo() == event.Card {
 
 		event.Defence += card.Defence
 	}
@@ -37,7 +37,16 @@ func Equipment(card *match.Card, ctx *match.Context) {
 
 		// Do this last in case any other cards want to interrupt the flow
 		ctx.Override(func() {
-			ctx.Match.PlayCard(card.ID)
+			playCtx := match.NewContext(ctx.Match, &match.PlayCardEvent{
+				ID: card.ID,
+			})
+
+			ctx.Match.HandleFx(playCtx)
+
+			if ctx.Cancelled() {
+				ctx.InterruptFlow()
+				return
+			}
 		})
 	}
 
@@ -52,7 +61,7 @@ func Equipment(card *match.Card, ctx *match.Context) {
 			// destroy existing equipment if any
 			event.Creature.RemoveEquipments()
 
-			event.Creature.Attach(card)
+			card.AttachTo(event.Creature)
 		})
 	}
 }

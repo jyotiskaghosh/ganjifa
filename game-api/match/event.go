@@ -49,8 +49,8 @@ type React struct {
 	Event interface{}
 }
 
-// BlockEvent is fired when a creature attempts
-type BlockEvent struct {
+// Block is fired when a creature attempts
+type Block struct {
 	Attacker *Card
 	Blocker  *Card
 }

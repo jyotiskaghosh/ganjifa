@@ -33,7 +33,16 @@ func Spell(card *match.Card, ctx *match.Context) {
 
 		// Do this last in case any other cards want to interrupt the flow
 		ctx.Override(func() {
-			ctx.Match.PlayCard(card.ID)
+			playCtx := match.NewContext(ctx.Match, &match.PlayCardEvent{
+				ID: card.ID,
+			})
+
+			ctx.Match.HandleFx(playCtx)
+
+			if ctx.Cancelled() {
+				ctx.InterruptFlow()
+				return
+			}
 		})
 	}
 }

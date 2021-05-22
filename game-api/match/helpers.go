@@ -1,8 +1,6 @@
 package match
 
 import (
-	"fmt"
-
 	"github.com/jyotiskaghosh/ganjifa/game-api/civ"
 	"github.com/jyotiskaghosh/ganjifa/game-api/family"
 
@@ -107,11 +105,19 @@ func Evolution(card *Card, ctx *Context, text string, filter func(*Card) bool) {
 
 	if len(creatures) < 1 {
 		ctx.InterruptFlow()
-		ctx.Match.WarnPlayer(card.Player, fmt.Sprintf("There are no creatures for %s to evolve from", card.Name))
 		return
 	}
 
-	ctx.Match.Evolve(card.ID, creatures[0])
+	evoCtx := NewContext(ctx.Match, &Evolve{
+		ID:       card.ID,
+		Creature: creatures[0],
+	})
+
+	ctx.Match.HandleFx(evoCtx)
+
+	if evoCtx.Cancelled() {
+		ctx.InterruptFlow()
+	}
 }
 
 // Equipment handles equiping
@@ -128,11 +134,19 @@ func Equipment(card *Card, ctx *Context, text string, filter func(*Card) bool) {
 
 	if len(creatures) < 1 {
 		ctx.InterruptFlow()
-		ctx.Match.WarnPlayer(card.Player, fmt.Sprintf("There are no creatures that can equip %s", card.Name))
 		return
 	}
 
-	ctx.Match.Equip(card.ID, creatures[0])
+	equipCtx := NewContext(ctx.Match, &Equip{
+		ID:       card.ID,
+		Creature: creatures[0],
+	})
+
+	ctx.Match.HandleFx(equipCtx)
+
+	if equipCtx.Cancelled() {
+		ctx.InterruptFlow()
+	}
 }
 
 // RemoveEquipments ...

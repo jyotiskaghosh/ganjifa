@@ -2,7 +2,7 @@
   <div>
     <div
       v-show="
-        wait || previewCard || previewCards || errorMessage || warning || action
+        previewCard || previewCards || errorMessage || warning || action
       "
       class="overlay"
     ></div>
@@ -15,12 +15,6 @@
     <div v-show="warning" class="error warn">
       <p>{{ warning }}</p>
       <div @click="warning = ''" class="btn">Close</div>
-    </div>
-
-    <div v-show="wait" class="error">
-      <p>
-        {{ wait }}<span class="dots">{{ loadingDots }}</span>
-      </p>
     </div>
 
     <div v-if="previewCard" class="card-preview">
@@ -405,7 +399,6 @@ export default {
 
       errorMessage: "",
       warning: "",
-      wait: "",
 
       loadingDots: "",
       invite:
