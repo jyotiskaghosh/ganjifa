@@ -37,6 +37,7 @@ func EnergySurge() *match.Card {
 				for _, c := range creatures {
 					c.AddCondition(func(card *match.Card, ctx *match.Context) {
 						fx.AttackModifier(card, ctx, 400)
+						ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player.Name(), card.Name, c.Name))
 					})
 				}
 			})
@@ -181,8 +182,6 @@ func Degenerate() *match.Card {
 						return
 					}
 
-					creatures[0].Detach()
-
 					if err := creatures[0].MoveCard(match.BATTLEZONE); err != nil {
 						logrus.Debug(err)
 					}
@@ -226,6 +225,7 @@ func LeechLife() *match.Card {
 						fx.AttackModifier(card, ctx, 200)
 					})
 					c.AddCondition(fx.Leech)
+					ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player.Name(), card.Name, c.Name))
 				}
 			})
 		}
@@ -261,6 +261,7 @@ func RapidEvolution() *match.Card {
 				for _, c := range creatures {
 					c.RemoveCondition(fx.CantEvolve)
 					c.Tap(true)
+					ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player.Name(), card.Name, c.Name))
 				}
 			})
 		}
@@ -382,6 +383,7 @@ func Tailwind() *match.Card {
 
 				for _, c := range creatures {
 					c.AddCondition(fx.CantBeBlocked)
+					ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player.Name(), card.Name, c.Name))
 				}
 			})
 		}
@@ -453,6 +455,7 @@ func FrostBreath() *match.Card {
 
 				for _, c := range creatures {
 					c.Tap(true)
+					ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player.Name(), card.Name, c.Name))
 				}
 			})
 		}
@@ -476,6 +479,7 @@ func TidalWave() *match.Card {
 
 			ctx.Override(func() {
 				card.Player.DrawCards(2)
+				ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s", card.Player.Name(), card.Name))
 			})
 		}
 	})
@@ -523,6 +527,7 @@ func Blizzard() *match.Card {
 
 				for _, c := range ctx.Match.Opponent(card.Player).GetCreatures() {
 					c.Tap(true)
+					ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s", card.Player.Name(), card.Name))
 				}
 			})
 		}

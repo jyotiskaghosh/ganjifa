@@ -45,6 +45,8 @@ type Match struct {
 	Match *match.Match `json:"-"`
 
 	created int64
+
+	ending bool
 }
 
 // Matches returns a list of the current matches
@@ -148,11 +150,14 @@ func (m *Match) startTicker() {
 	for {
 
 		select {
+
 		case <-m.Match.Quit:
 			{
 				logrus.Debugf("Closing match %s", m.ID)
+				m.ending = true
 				return
 			}
+
 		case <-ticker.C:
 			{
 
@@ -161,10 +166,8 @@ func (m *Match) startTicker() {
 					logrus.Debugf("Closing match %s", m.ID)
 					return
 				}
-
 			}
 		}
-
 	}
 }
 
@@ -217,6 +220,15 @@ func (m *Match) Parse(s *server.Socket, data []byte) {
 			logrus.Warnf("Recovered from parsing a message for a match. %v", r)
 		}
 	}()
+
+	if m.ending {
+		s.Write(match.ChatMessage{
+			Header:  "warn",
+			Message: "match has ended",
+			Sender:  "server",
+		})
+		return
+	}
 
 	var message server.Message
 	if err := json.Unmarshal(data, &message); err != nil {

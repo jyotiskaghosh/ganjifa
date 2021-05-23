@@ -202,6 +202,7 @@ func (p *Player) ShuffleDeck() {
 	defer p.mutex.Unlock()
 
 	rand.Shuffle(len(p.deck), func(i, j int) { p.deck[i], p.deck[j] = p.deck[j], p.deck[i] })
+	p.match.Chat("Server", fmt.Sprintf("%s's deck was shuffled", p.Name()))
 }
 
 // PeekDeck returns references to the next n cards in the deck
@@ -238,6 +239,10 @@ func (p *Player) DrawCards(n int) {
 		p.match.Chat("Server", fmt.Sprintf("%s drew %v cards", p.Name(), n))
 	} else {
 		p.match.Chat("Server", fmt.Sprintf("%s drew %v card", p.Name(), n))
+	}
+
+	if len(p.deck) == 0 {
+		p.match.End(p.match.Opponent(p), fmt.Sprintf("%s has no cards left in his deck", p.Name()))
 	}
 }
 
@@ -295,7 +300,7 @@ func (p *Player) Damage(source *Card, ctx *Context, health int) {
 	})
 
 	ctx.ScheduleAfter(func() {
-		ctx.Match.Chat("Server", fmt.Sprintf("%s did %d damage to player %s", source.Name, health, p.Name()))
+		ctx.Match.Chat("Server", fmt.Sprintf("%s did %d damage to %s", source.Name, health, p.Name()))
 	})
 
 	ctx.Match.HandleFx(ctx)
@@ -330,7 +335,7 @@ func (p *Player) Heal(source *Card, ctx *Context, health int) {
 	})
 
 	ctx.ScheduleAfter(func() {
-		ctx.Match.Chat("Server", fmt.Sprintf("%s healed %d life for player %s", source.Name, health, p.Name()))
+		ctx.Match.Chat("Server", fmt.Sprintf("%s healed %d life for %s", source.Name, health, p.Name()))
 	})
 
 	ctx.Match.HandleFx(ctx)

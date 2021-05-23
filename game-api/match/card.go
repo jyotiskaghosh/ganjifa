@@ -29,7 +29,7 @@ type Card struct {
 	handlers   []HandlerFunc
 	attachedTo *Card
 
-	conditions []HandlerFunc // temporary handlers
+	conditions []HandlerFunc // Temporary handlers
 
 	mutex *sync.Mutex
 }
@@ -159,6 +159,11 @@ func (c *Card) Attachments() []*Card {
 // AttachTo attaches c to card
 func (c *Card) AttachTo(card *Card) {
 
+	if card.Zone != BATTLEZONE {
+		logrus.Debug("can't attach to a card that is not in battlezone")
+		return
+	}
+
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
@@ -205,6 +210,10 @@ func (c *Card) MoveCard(destination Container) error {
 
 	f := c.Zone
 	c.Zone = destination
+
+	if f == SOUL && destination != SOUL {
+		c.Detach()
+	}
 
 	c.Player.match.HandleFx(NewContext(c.Player.match, &CardMoved{
 		ID:   c.ID,

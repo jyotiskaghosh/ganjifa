@@ -17,7 +17,7 @@ type Match struct {
 	mutex *sync.Mutex
 
 	started bool
-	wait    bool // wait prevents other moves from executing, used to prevent race conditions
+	wait    bool // Wait prevents other moves from executing, used to prevent race conditions
 
 	winner *Player
 	Quit   chan bool
@@ -80,21 +80,29 @@ func (m *Match) AddPlayer(w Writer) (*PlayerReference, error) {
 
 	var pr *PlayerReference
 
-	if m.player1 == nil {
-		pr = &PlayerReference{
-			Name:   "player1",
-			Player: newPlayer(m, true),
-			Writer: w,
+	switch {
+
+	case m.player1 == nil:
+		{
+			pr = &PlayerReference{
+				Name:   "player1",
+				Player: newPlayer(m, true),
+				Writer: w,
+			}
+			m.player1 = pr
 		}
-		m.player1 = pr
-	} else if m.player2 == nil {
-		pr = &PlayerReference{
-			Name:   "player2",
-			Player: newPlayer(m, false),
-			Writer: w,
+
+	case m.player2 == nil:
+		{
+			pr = &PlayerReference{
+				Name:   "player2",
+				Player: newPlayer(m, false),
+				Writer: w,
+			}
+			m.player2 = pr
 		}
-		m.player2 = pr
-	} else {
+
+	default:
 		return nil, errors.New("players at max capacity")
 	}
 
@@ -327,17 +335,21 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 
 // Opponent returns the opponent of the given player
 func (m *Match) Opponent(p *Player) *Player {
+
 	if m.player1.Player == p {
 		return m.player2.Player
 	}
+
 	return m.player1.Player
 }
 
 // CurrentPlayer returns the turn player
 func (m *Match) CurrentPlayer() *PlayerReference {
+
 	if m.player1.Player.turn {
 		return m.player1
 	}
+
 	return m.player2
 }
 
@@ -378,6 +390,7 @@ func (m *Match) MessagePlayer(p *Player, message string) {
 
 // Warn sends a warning to the specified player ref
 func Warn(p *PlayerReference, message string) {
+
 	p.Write(ChatMessage{
 		Header:  "warn",
 		Message: message,
@@ -400,6 +413,10 @@ func (m *Match) WarnPlayer(p *Player, message string) {
 func (m *Match) Battle(attacker *Card, defender *Card, blocked bool) {
 
 	attacker.Tap(true)
+
+	if attacker.Zone != BATTLEZONE || defender.Zone != BATTLEZONE {
+		return
+	}
 
 	ctx := NewContext(m, &Battle{Attacker: attacker, Defender: defender, Blocked: blocked})
 
@@ -545,7 +562,6 @@ func (m *Match) End(winner *Player, reason string) {
 	logrus.Debugf("Attempting to end match")
 
 	m.Chat("server", fmt.Sprintf("%s won the match, %s", winner.Name(), reason))
-	m.Chat("server", fmt.Sprintf("%s won the match, %s", winner.Name(), reason))
 
 	m.winner = winner
 	m.Quit <- true
@@ -586,6 +602,7 @@ func (m *Match) CloseAction(p *Player) {
 
 // ShowCards shows the specified cards to the player with a message of why it is being shown
 func (m *Match) ShowCards(p *Player, message string, cards []string) {
+
 	pr, err := m.PlayerRef(p)
 	if err != nil {
 		logrus.Debug(err)
@@ -627,7 +644,7 @@ func (m *Match) Start() {
 
 	m.Chat("Server", "The match has begun!")
 
-	// this is done to offset BeginNewTurn which changes current player
+	// This is done to offset BeginNewTurn which changes current player
 	m.changeCurrentPlayer()
 
 	m.BeginNewTurn()
@@ -648,9 +665,7 @@ func (m *Match) BeginNewTurn() {
 	m.changeCurrentPlayer()
 	m.CurrentPlayer().Player.turnNo++
 
-	ctx := NewContext(m, &BeginTurnStep{})
-
-	m.HandleFx(ctx)
+	m.HandleFx(NewContext(m, &BeginTurnStep{}))
 
 	m.BroadcastState()
 
@@ -660,9 +675,7 @@ func (m *Match) BeginNewTurn() {
 // UntapStep ...
 func (m *Match) UntapStep() {
 
-	ctx := NewContext(m, &UntapStep{})
-
-	m.HandleFx(ctx)
+	m.HandleFx(NewContext(m, &UntapStep{}))
 
 	m.StartOfTurnStep()
 }
@@ -670,11 +683,9 @@ func (m *Match) UntapStep() {
 // StartOfTurnStep ...
 func (m *Match) StartOfTurnStep() {
 
-	ctx := NewContext(m, &StartOfTurnStep{})
+	m.HandleFx(NewContext(m, &StartOfTurnStep{}))
 
-	m.HandleFx(ctx)
-
-	m.Chat("Server", fmt.Sprintf("Your.turn, %s", m.CurrentPlayer().Player.Name()))
+	m.Chat("Server", fmt.Sprintf("Your turn, %s", m.CurrentPlayer().Player.Name()))
 
 	m.DrawStep()
 }
@@ -682,16 +693,10 @@ func (m *Match) StartOfTurnStep() {
 // DrawStep ...
 func (m *Match) DrawStep() {
 
-	ctx := NewContext(m, &DrawStep{})
-
-	m.HandleFx(ctx)
+	m.HandleFx(NewContext(m, &DrawStep{}))
 
 	p := m.CurrentPlayer().Player
 	p.DrawCards(1)
-
-	if len(p.deck) == 0 {
-		m.End(m.Opponent(p), fmt.Sprintf("%s has no cards left in his deck", p.Name()))
-	}
 
 	m.BroadcastState()
 }
@@ -699,16 +704,14 @@ func (m *Match) DrawStep() {
 // EndStep ...
 func (m *Match) EndStep() {
 
-	ctx := NewContext(m, &EndStep{})
+	m.HandleFx(NewContext(m, &EndStep{}))
 
-	m.HandleFx(ctx)
-
-	m.Chat("Server", fmt.Sprintf("%s ended their.turn", m.CurrentPlayer().Player.Name()))
+	m.Chat("Server", fmt.Sprintf("%s ended their turn", m.CurrentPlayer().Player.Name()))
 
 	m.BeginNewTurn()
 }
 
-// EndTurn is called when the player attempts to end their.turn
+// EndTurn is called when the player attempts to end their turn
 // If the context is not cancelled by a card, the EndStep is called
 func (m *Match) EndTurn() {
 
@@ -724,24 +727,9 @@ func (m *Match) EndTurn() {
 // PlayCard is called when the player attempts to play a card
 func (m *Match) PlayCard(id string) {
 
-	ctx := NewContext(m, &PlayCardEvent{
+	m.HandleFx(NewContext(m, &PlayCardEvent{
 		ID: id,
-	})
-
-	m.HandleFx(ctx)
-
-	m.BroadcastState()
-}
-
-// React fires of a react event
-func (m *Match) React(id string, event interface{}) {
-
-	ctx := NewContext(m, &React{
-		ID:    id,
-		Event: event,
-	})
-
-	m.HandleFx(ctx)
+	}))
 
 	m.BroadcastState()
 }
@@ -773,9 +761,11 @@ func (m *Match) AttackCreature(pr *PlayerReference, id string, targetID string) 
 
 // GetCard returns the *Card from a container from either players
 func (m *Match) GetCard(id string) (*Card, error) {
+
 	c, err := m.player1.Player.GetCard(id)
 	if err != nil {
 		return m.player2.Player.GetCard(id)
 	}
+
 	return c, nil
 }

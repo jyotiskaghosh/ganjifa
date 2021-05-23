@@ -5,17 +5,22 @@ import "github.com/jyotiskaghosh/ganjifa/game-api/match"
 // Leech ...
 func Leech(card *match.Card, ctx *match.Context) {
 
-	if event, ok := ctx.Event.(*match.DamageEvent); ok && event.Source == card {
+	switch event := ctx.Event.(type) {
 
-		ctx.ScheduleAfter(func() {
-			card.Player.Heal(card, ctx, event.Health)
-		})
-	}
+	case *match.DamageEvent:
+		if event.Source == card {
 
-	if event, ok := ctx.Event.(*match.CreatureDestroyed); ok && event.Source == card {
+			ctx.ScheduleAfter(func() {
+				card.Player.Heal(card, ctx, event.Health)
+			})
+		}
 
-		ctx.ScheduleAfter(func() {
-			card.Player.Heal(card, ctx, event.Card.GetDefence(ctx))
-		})
+	case *match.CreatureDestroyed:
+		if event.Source == card {
+
+			ctx.ScheduleAfter(func() {
+				card.Player.Heal(card, ctx, event.Card.GetDefence(ctx))
+			})
+		}
 	}
 }

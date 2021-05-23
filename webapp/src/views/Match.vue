@@ -96,26 +96,6 @@
       <span style="color: red">{{ actionError }}</span>
     </div>
 
-    <!-- Lobby -->
-    <div v-if="decks.length < 1" class="lobby">
-      <h1>
-        Waiting for your opponent to join<span class="dots">{{
-          loadingDots
-        }}</span>
-      </h1>
-      <div :class="['invite-link', { copied: inviteCopied }]">
-        <span id="invitelink">{{ invite }}</span>
-        <div
-          data-clipboard-action="copy"
-          data-clipboard-target="#invitelink"
-          id="invitebtn"
-          :class="['copy', { copied: inviteCopied }]"
-        >
-          {{ inviteCopied ? "Copied" : "Copy" }}
-        </div>
-      </div>
-    </div>
-
     <!-- Match -->
     <div class="chat">
       <div class="chatbox">
@@ -401,14 +381,6 @@ export default {
       warning: "",
 
       loadingDots: "",
-      invite:
-        location.protocol +
-        "//" +
-        location.host +
-        "/invite/" +
-        this.$route.params.id,
-      inviteCopied: false,
-      inviteCopyTask: null,
 
       chatMessages: [],
       chatMessage: "",
@@ -1000,37 +972,6 @@ export default {
   padding-top: 10vh;
 }
 
-.invite-link {
-  padding: 5px;
-  padding-left: 10px;
-  background: #2b2e33;
-  border: 1px solid #222428;
-  border-radius: 4px;
-  display: inline-block;
-  color: #e3e3e5;
-  transition: 0.1s;
-}
-
-.invite-link span {
-  float: left;
-  display: block;
-  margin-top: 5px;
-}
-
-.invite-link .copy {
-  display: inline-block;
-  background: #7289da;
-  color: #e3e3e5;
-  font-size: 14px;
-  line-height: 20px;
-  padding: 5px 10px;
-  border-radius: 4px;
-  margin-left: 20px;
-  transition: 0.1s;
-  text-align: center !important;
-  width: 45px;
-}
-
 .copy:hover {
   cursor: pointer;
   background: #677bc4;
@@ -1039,10 +980,6 @@ export default {
 .copied {
   border-color: #3ca374 !important;
   color: #fff !important;
-}
-
-.invite-link > .copied {
-  background: #3ca374;
 }
 
 .dots {
