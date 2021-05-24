@@ -18,7 +18,7 @@ const (
 	HAND       Container = "hand"
 	GRAVEYARD  Container = "graveyard"
 	BATTLEZONE Container = "battlezone"
-	SPELLZONE  Container = "spellzone"
+	HIDDENZONE Container = "hiddenzone"
 	SOUL       Container = "soul"
 )
 
@@ -48,7 +48,7 @@ type Player struct {
 	hand       []*Card
 	graveyard  []*Card
 	battlezone []*Card
-	spellzone  []*Card
+	hiddenzone []*Card
 	soul       []*Card
 	life       int
 
@@ -73,7 +73,7 @@ func newPlayer(match *Match, turn bool) *Player {
 		hand:       make([]*Card, 0),
 		graveyard:  make([]*Card, 0),
 		battlezone: make([]*Card, 0),
-		spellzone:  make([]*Card, 0),
+		hiddenzone: make([]*Card, 0),
 		soul:       make([]*Card, 0),
 		life:       LIFE,
 		mutex:      &sync.Mutex{},
@@ -114,8 +114,8 @@ func (p *Player) ContainerRef(c Container) (*[]*Card, error) {
 		return &p.graveyard, nil
 	case BATTLEZONE:
 		return &p.battlezone, nil
-	case SPELLZONE:
-		return &p.spellzone, nil
+	case HIDDENZONE:
+		return &p.hiddenzone, nil
 	case SOUL:
 		return &p.soul, nil
 	default:
@@ -135,8 +135,8 @@ func (p *Player) Container(c Container) ([]*Card, error) {
 		return p.graveyard, nil
 	case BATTLEZONE:
 		return p.battlezone, nil
-	case SPELLZONE:
-		return p.spellzone, nil
+	case HIDDENZONE:
+		return p.hiddenzone, nil
 	case SOUL:
 		return p.soul, nil
 	default:
@@ -360,7 +360,7 @@ func (p *Player) Denormalized() PlayerState {
 		Hand:       denormalizeCards(p.hand),
 		Graveyard:  denormalizeCards(p.graveyard),
 		Battlezone: denormalizeCards(p.battlezone),
-		Spellzone:  denormalizeCards(p.spellzone),
+		Hiddenzone: denormalizeCards(p.hiddenzone),
 	}
 
 	return state
@@ -381,6 +381,21 @@ func denormalizeCards(cards []*Card) []CardState {
 			Tapped:        card.tapped,
 			AttachedCards: denormalizeCards(card.Attachments()),
 		}
+
+		arr = append(arr, cs)
+	}
+
+	return arr
+}
+
+// HideCards takes an array of *Card and returns an array of empty CardStates
+func HideCards(n int) []CardState {
+
+	arr := make([]CardState, 0)
+
+	for i := 0; i < n; i++ {
+
+		cs := CardState{}
 
 		arr = append(arr, cs)
 	}

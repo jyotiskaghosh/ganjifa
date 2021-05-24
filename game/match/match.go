@@ -236,9 +236,9 @@ func (m *Match) Parse(s *server.Socket, data []byte) {
 	}
 
 	switch message.Header {
+
 	case "join_match":
 		{
-
 			if _, err := m.Match.AddPlayer(s); err != nil {
 				s.Write(match.ChatMessage{
 					Header:  "warn",
@@ -289,6 +289,20 @@ func (m *Match) Parse(s *server.Socket, data []byte) {
 			})
 
 		}
+
+	case "chat":
+		{
+			var msg struct {
+				Message string `json:"message"`
+			}
+
+			if err := json.Unmarshal(data, &msg); err != nil {
+				return
+			}
+
+			m.Match.Chat(s.User.Username, msg.Message)
+		}
+
 	default:
 		{
 			pr, err := m.Match.PlayerForWriter(s)

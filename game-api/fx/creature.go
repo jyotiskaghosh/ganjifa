@@ -75,7 +75,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 				card.AddCondition(event.Creature.Conditions()...)
 				card.AddCondition(CantEvolve)
 
-				// This is done to maintain a singular identity for a creature
+				// This is done to maintain a single identity for a creature
 				card.ID, event.Creature.ID = event.Creature.ID, card.ID
 			})
 		}
@@ -84,13 +84,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 	case *match.AttackPlayer:
 		if event.ID == card.ID {
 
-			if card.Tapped() || card.Zone != match.BATTLEZONE {
-				ctx.InterruptFlow()
-				return
-			}
-
-			if card.GetAttack(ctx) <= 0 {
-				ctx.Match.WarnPlayer(card.Player, fmt.Sprintf("%s can't attack", card.Name))
+			if card.Tapped() || card.Zone != match.BATTLEZONE || card.GetAttack(ctx) <= 0 {
 				ctx.InterruptFlow()
 				return
 			}
@@ -100,7 +94,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 
 				opponent := ctx.Match.Opponent(card.Player)
 
-				spellzone, err := ctx.Match.Opponent(card.Player).ContainerRef(match.SPELLZONE)
+				spellzone, err := ctx.Match.Opponent(card.Player).ContainerRef(match.HIDDENZONE)
 				if err != nil {
 					ctx.InterruptFlow()
 					logrus.Debug(err)
@@ -113,6 +107,8 @@ func Creature(card *match.Card, ctx *match.Context) {
 						blockers = append(blockers, c)
 					}
 				}
+
+				defer card.Tap(true)
 
 				ctx.Match.NewAction(opponent, append(blockers, *spellzone...), 1, 1, fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name, opponent.Name()), true)
 				defer ctx.Match.CloseAction(opponent)
@@ -133,7 +129,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 									logrus.Debug(err)
 								}
 
-								if c.Zone == match.SPELLZONE {
+								if c.Zone == match.HIDDENZONE {
 
 									// Playing set down card
 									ctx.Match.HandleFx(match.NewContext(ctx.Match, &match.React{
@@ -153,25 +149,23 @@ func Creature(card *match.Card, ctx *match.Context) {
 								} else {
 
 									// Blocking attack
-									ctx.Match.HandleFx(match.NewContext(ctx.Match, &match.Block{
+									blockCtx := match.NewContext(ctx.Match, &match.Block{
 										Attacker: card,
 										Blocker:  c,
-									}))
-									ctx.Match.BroadcastState()
+									})
 
-									// Check if attack can still go through
-									ctx.Match.ResolveEvent(ctx)
-									if ctx.Cancelled() {
-										return
+									ctx.Match.HandleFx(blockCtx)
+									if blockCtx.Cancelled() {
+										continue
 									}
+
+									return
 								}
 							}
 						}
 
 					case cancel := <-opponent.Cancel:
 						if cancel {
-
-							card.Tap(true)
 							opponent.Damage(card, ctx, card.GetAttack(ctx))
 							return
 						}
@@ -184,13 +178,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 	case *match.AttackCreature:
 		if event.ID == card.ID {
 
-			if card.Tapped() || card.Zone != match.BATTLEZONE {
-				ctx.InterruptFlow()
-				return
-			}
-
-			if card.GetAttack(ctx) <= 0 {
-				ctx.Match.WarnPlayer(card.Player, fmt.Sprintf("%s can't attack", card.Name))
+			if card.Tapped() || card.Zone != match.BATTLEZONE || card.GetAttack(ctx) <= 0 {
 				ctx.InterruptFlow()
 				return
 			}
@@ -213,7 +201,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 			// Do this last in case any other cards want to interrupt the flow
 			ctx.Override(func() {
 
-				spellzone, err := ctx.Match.Opponent(card.Player).ContainerRef(match.SPELLZONE)
+				spellzone, err := ctx.Match.Opponent(card.Player).ContainerRef(match.HIDDENZONE)
 				if err != nil {
 					ctx.InterruptFlow()
 					logrus.Debug(err)
@@ -226,6 +214,8 @@ func Creature(card *match.Card, ctx *match.Context) {
 						blockers = append(blockers, c)
 					}
 				}
+
+				defer card.Tap(true)
 
 				ctx.Match.NewAction(opponent, append(blockers, *spellzone...), 1, 1, fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name, defender.Name), true)
 				defer ctx.Match.CloseAction(opponent)
@@ -246,7 +236,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 									logrus.Debug(err)
 								}
 
-								if c.Zone == match.SPELLZONE {
+								if c.Zone == match.HIDDENZONE {
 
 									// Playing set down card
 									ctx.Match.HandleFx(match.NewContext(ctx.Match, &match.React{
@@ -261,7 +251,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 										return
 									}
 
-									// This is done in cases the target evolves
+									// This is done in case the target evolves
 									defender, err = opponent.GetCard(event.TargetID)
 									if err != nil {
 										ctx.Match.WarnPlayer(card.Player, "creature to attack was not found")
@@ -274,17 +264,17 @@ func Creature(card *match.Card, ctx *match.Context) {
 								} else {
 
 									// Blocking attack
-									ctx.Match.HandleFx(match.NewContext(ctx.Match, &match.Block{
+									blockCtx := match.NewContext(ctx.Match, &match.Block{
 										Attacker: card,
 										Blocker:  c,
-									}))
-									ctx.Match.BroadcastState()
+									})
 
-									// Check if attack can still go through
-									ctx.Match.ResolveEvent(ctx)
-									if ctx.Cancelled() {
-										return
+									ctx.Match.HandleFx(blockCtx)
+									if blockCtx.Cancelled() {
+										continue
 									}
+
+									return
 								}
 							}
 						}
@@ -304,12 +294,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 	case *match.Block:
 		if event.Blocker == card {
 
-			if card.Tapped() || card.Zone != match.BATTLEZONE {
-				ctx.InterruptFlow()
-				return
-			}
-
-			if card.GetDefence(ctx) <= 0 {
+			if card.Tapped() || card.Zone != match.BATTLEZONE || card.GetDefence(ctx) <= 0 {
 				ctx.Match.WarnPlayer(card.Player, fmt.Sprintf("%s can't block", card.Name))
 				ctx.InterruptFlow()
 				return
@@ -317,7 +302,9 @@ func Creature(card *match.Card, ctx *match.Context) {
 
 			// Do this last in case any other cards want to interrupt the flow
 			ctx.Override(func() {
-				event.Blocker.Tap(true)
+
+				defer event.Blocker.Tap(true)
+
 				ctx.Match.Battle(event.Attacker, card, true)
 			})
 		}

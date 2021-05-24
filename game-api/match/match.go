@@ -194,7 +194,7 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
-			if err := c.MoveCard(SPELLZONE); err != nil {
+			if err := c.MoveCard(HIDDENZONE); err != nil {
 				logrus.Debug(err)
 				return
 			}
@@ -412,8 +412,6 @@ func (m *Match) WarnPlayer(p *Player, message string) {
 // Battle handles a battle between two creatures
 func (m *Match) Battle(attacker *Card, defender *Card, blocked bool) {
 
-	attacker.Tap(true)
-
 	if attacker.Zone != BATTLEZONE || defender.Zone != BATTLEZONE {
 		return
 	}
@@ -460,7 +458,7 @@ func (m *Match) collectCards() []*Card {
 
 		cards = append(cards, p.Player.battlezone...)
 		cards = append(cards, p.Player.soul...)
-		cards = append(cards, p.Player.spellzone...)
+		cards = append(cards, p.Player.hiddenzone...)
 		cards = append(cards, p.Player.hand...)
 		cards = append(cards, p.Player.graveyard...)
 		cards = append(cards, p.Player.deck...)
@@ -549,8 +547,11 @@ func (m *Match) BroadcastState() {
 		},
 	}
 
-	p1state.State.Opponent.Hand = make([]CardState, 0)
-	p2state.State.Opponent.Hand = make([]CardState, 0)
+	p1state.State.Opponent.Hand = HideCards(len(p1state.State.Opponent.Hand))
+	p1state.State.Opponent.Hiddenzone = HideCards(len(p1state.State.Opponent.Hiddenzone))
+
+	p2state.State.Opponent.Hand = HideCards(len(p2state.State.Opponent.Hand))
+	p2state.State.Opponent.Hiddenzone = HideCards(len(p2state.State.Opponent.Hiddenzone))
 
 	m.player1.Write(p1state)
 	m.player2.Write(p2state)

@@ -159,8 +159,7 @@ func (c *Card) Attachments() []*Card {
 // AttachTo attaches c to card
 func (c *Card) AttachTo(card *Card) {
 
-	if card.Zone != BATTLEZONE {
-		logrus.Debug("can't attach to a card that is not in battlezone")
+	if card.Zone != BATTLEZONE || c == card {
 		return
 	}
 

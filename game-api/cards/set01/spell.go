@@ -188,6 +188,9 @@ func Degenerate() *match.Card {
 
 					c.AttachTo(creatures[0])
 
+					// This is done to maintain a single identity for a creature
+					card.ID, creatures[0].ID = creatures[0].ID, card.ID
+
 					ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name, card.Name))
 				}
 			})
@@ -331,7 +334,7 @@ func Whirlwind() *match.Card {
 
 			ctx.Override(func() {
 
-				cards, err := ctx.Match.Opponent(card.Player).Container(match.SPELLZONE)
+				cards, err := ctx.Match.Opponent(card.Player).Container(match.HIDDENZONE)
 				if err != nil {
 					ctx.InterruptFlow()
 					logrus.Debug(err)

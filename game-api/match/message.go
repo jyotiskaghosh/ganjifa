@@ -36,8 +36,8 @@ type PlayerState struct {
 	Deck       int         `json:"deck"`
 	Hand       []CardState `json:"hand"`
 	Graveyard  []CardState `json:"graveyard"`
-	Battlezone []CardState `json:"playzone"`
-	Spellzone  []CardState `json:"spellzone"`
+	Battlezone []CardState `json:"battlezone"`
+	Hiddenzone []CardState `json:"hiddenzone"`
 }
 
 // State stores information about the current state of the match in the eyes of a given player

@@ -11,8 +11,8 @@ Before a game begins, each player must have a deck of 40 cards, with a few build
 
 A game state consists of the following card containers/zones
 1. Deck: You draw a card from your deck each turn.
-2. Battle Zone: Creatures are put into this zone to battle against other creatures as well as damage your opponent's life.
-3. Spellzone: You can set down cards facedown in this zone to be used reactively during your opponent's turn, the set down cards can only be played this way.
+2. Battlezone: Creatures are put into this zone to battle against other creatures as well as damage your opponent's life.
+3. Hiddenzone: You can set down cards facedown in this zone to be used reactively during your opponent's turn, the set down cards can only be played this way.
 5. Graveyard: Destroyed creatures, spells, Equipments that have been cast and resolved are put into this zone.
 6. Life: Keeps track of your life points, you begin with 2000 life points
 7. Hand: You usually play or set down cards from your hand
@@ -45,7 +45,7 @@ A game state consists of the following card containers/zones
     
 5. Opponent's turn.
    
-   Whenever your opponent's creatures attack you can play your set down cards. You may only play spells and Equipments this way, not creatures.
+   Whenever your opponent's creatures attack you can play your set down cards. You may only play spells and Equipments this way(unless stated otherwise)
    You can also use your untapped creatures to block an incoming attack.
 
 # Victory Conditions
@@ -73,6 +73,6 @@ There are only three card types in the game, they are:
 3. Equipments: Equipments like spells have various effects to alter the play of the game, but unlike spells have more permanent effects and equipments also have attack and defense, which get added to the equipped creature.
                After being cast they are sent to the soul of a creature(underneath the creature stack) and the effects are passed on to the creature.
                Equipments can only be equipped by creatures that share their civilization and have rank higher or equal to their own in the battlezone.
-               A creature can only equip one equipment, when another equipment is put the equiped equipment is sent to the graveyard.
-               They are destroyed/moved along with the creatures they are equiped to.
+               A creature can only equip one equipment, when another equipment is put the previously equiped equipment is sent to the graveyard.
+               Equipments are moved along with the creatures they are equiped to.
 

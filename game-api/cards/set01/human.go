@@ -28,7 +28,6 @@ func Ayudhabhrt() *match.Card {
 			if c.Family == family.Equipment {
 				fx.AttackModifier(card, ctx, 100)
 				fx.DefenceModifier(card, ctx, 100)
-				return
 			}
 		}
 	})

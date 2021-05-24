@@ -130,8 +130,8 @@
             set card
           </div>
         </template>
-        <template v-if="playzoneSelection">
-          <span>{{ playzoneSelection.name }}</span>
+        <template v-if="battlezoneSelection">
+          <span>{{ battlezoneSelection.name }}</span>
           <div @click="attackPlayer()" class="btn">Attack player</div>
           <div class="spacer"></div>
           <div @click="attackCreature()" class="btn">Attack creature</div>
@@ -193,38 +193,23 @@
     </template>
 
     <div v-if="started" class="stadium">
+
       <div class="stage opponent">
-      
-        <div class="spellzone">
-          <div class="set spell placeholder">
-            <img src="/assets/cards/backside.png" />
-          </div>
-          <div
-            v-for="(card, index) in state.opponent.spellzone"
-            :key="index"
-            class="set-card"
-          >
-            <img src="/assets/cards/backside.png" />
-          </div>
-        </div>
 
-        <div class="playzone">
-          <div class="card placeholder">
-            <img src="/assets/cards/backside.png" />
-          </div>
-          <div
-            @contextmenu.prevent="showLarge(card)"
-            v-for="(card, index) in state.opponent.playzone"
-            :key="index"
-            :class="['card', { tapped: card.tapped }]"
-          >
-            <img class="flipped" :src="`/assets/cards/all/${card.uid}.jpg`" />
-          </div>
-        </div>
-      </div>
-
-      <div class="right-stage">
+ <div class="right-stage">
         <div class="right-stage-content">
+
+          <p> LIFE: {{ state.opponent.life }} </p>
+          
+          <p>Deck [{{ state.opponent.deck }}]</p>
+          <div class="card">
+            <img
+              @contextmenu.prevent=""
+              style="height: 10vh"
+              src="/assets/cards/backside.png"
+            />
+          </div>
+
           <p>Graveyard [{{ state.opponent.graveyard.length }}]</p>
           <div class="card">
             <img
@@ -243,86 +228,119 @@
               :src="`/assets/cards/all/${state.opponent.graveyard[0].uid}.jpg`"
             />
           </div>
-
-          <p>Deck [{{ state.opponent.deck.uid }}]</p>
-          <div class="card">
-            <img
-              @contextmenu.prevent=""
-              style="height: 10vh"
-              src="/assets/cards/backside.png"
-            />
-          </div>
         </div>
       </div>
 
-      <div class="right-stage bt">
-        <div class="right-stage-content">
-          <p>Graveyard [{{ state.me.graveyard.length }}]</p>
-          <div class="card">
-            <img
-              @contextmenu.prevent=""
-              v-if="state.me.graveyard.length < 1"
-              style="height: 10vh; opacity: 0.3"
-              src="/assets/cards/backside.png"
-            />
-            <img
-              @contextmenu.prevent="
-                previewCards = state.me.graveyard;
-                previewCardsText = 'My Graveyard';
-              "
-              v-if="state.me.graveyard.length > 0"
-              style="height: 10vh"
-              :src="`/assets/cards/all/${state.me.graveyard[0].uid}.jpg`"
-            />
-          </div>
-
-          <p>Deck [{{ state.me.deck.uid }}]</p>
-          <div class="card">
-            <img
-              @contextmenu.prevent=""
-              style="height: 10vh"
-              src="/assets/cards/backside.png"
-            />
-          </div>
+      <div class="hiddenzone">
+        <div class="card placeholder">
+          <img src="/assets/cards/backside.png" />
+        </div>
+        <div
+          v-for="(card, index) in state.opponent.hand"
+          :key="index"
+          class="card"
+        >
+          <img src="/assets/cards/backside.png" />
         </div>
       </div>
 
-      <div class="stage me bt">
-        <div class="playzone">
+        <div class="hiddenzone">
           <div class="card placeholder">
             <img src="/assets/cards/backside.png" />
           </div>
           <div
-            @click="onPlayzoneClicked(card)"
+            v-for="(card, index) in state.opponent.hiddenzone"
+            :key="index"
+            class="card"
+          >
+            <img src="/assets/cards/backside.png" />
+          </div>
+        </div>
+
+        <div class="battlezone">
+          <div class="card placeholder">
+            <img src="/assets/cards/backside.png" />
+          </div>
+          <div
             @contextmenu.prevent="showLarge(card)"
-            v-for="(card, index) in state.me.playzone"
+            v-for="(card, index) in state.opponent.battlezone"
+            :key="index"
+            :class="['card', { tapped: card.tapped }]"
+          >
+            <img class="flipped" :src="`/assets/cards/all/${card.uid}.jpg`" />
+          </div>
+        </div>      
+      </div>
+
+      <div class="stage me bt">
+        
+        <div class="right-stage bt">
+          <div class="right-stage-content">
+            <p>Graveyard [{{ state.me.graveyard.length }}]</p>
+            <div class="card">
+              <img
+                @contextmenu.prevent=""
+                v-if="state.me.graveyard.length < 1"
+                style="height: 10vh; opacity: 0.3"
+                src="/assets/cards/backside.png"
+              />
+              <img
+                @contextmenu.prevent="
+                  previewCards = state.me.graveyard;
+                  previewCardsText = 'My Graveyard';
+                "
+                v-if="state.me.graveyard.length > 0"
+                style="height: 10vh"
+                :src="`/assets/cards/all/${state.me.graveyard[0].uid}.jpg`"
+              />
+            </div>
+
+            <p>Deck [{{ state.me.deck }}]</p>
+            <div class="card">
+              <img
+                @contextmenu.prevent=""
+                style="height: 10vh"
+                src="/assets/cards/backside.png"
+              />
+            </div>
+            <p> LIFE: {{ state.me.life }} </p>
+          </div>
+        </div>
+
+        <div class="battlezone">
+          <div class="card placeholder">
+            <img src="/assets/cards/backside.png" />
+          </div>
+          <div
+            @click="onbattlezoneClicked(card)"
+            @contextmenu.prevent="showLarge(card)"
+            v-for="(card, index) in state.me.battlezone"
             :key="index"
             :class="['card', { tapped: card.tapped }]"
           >
             <img
               :class="
-                playzoneSelection === card ? 'glow-' + card.civilization : ''
+                battlezoneSelection === card ? 'glow-' + card.civilization : ''
               "
               :src="`/assets/cards/all/${card.uid}.jpg`"
             />
           </div>
         </div>
 
-        <div class="spellzone">
-          <div class="set spell placeholder">
+        <div class="hiddenzone">
+          <div class="card placeholder">
             <img src="/assets/cards/backside.png" />
           </div>
           <div
-            v-for="(card, index) in state.me.spellzone"
+            v-for="(card, index) in state.me.hiddenzone"
             :key="index"
-            class="set-card"
+            class="card"
           >
             <img src="/assets/cards/backside.png" />
           </div>
         </div>
-      </div>
 
-      <div class="hand bt">
+        <div class="hand bt">
         <div class="card placeholder">
           <img src="/assets/cards/backside.png" />
         </div>
@@ -338,6 +356,8 @@
             :src="`/assets/cards/all/${card.uid}.jpg`"
           />
         </div>
+      </div>
+
       </div>
     </div>
   </div>
@@ -394,7 +414,7 @@ export default {
       state: {},
       handSelection: null,
 
-      playzoneSelection: null,
+      battlezoneSelection: null,
 
       action: null,
       actionError: "",
@@ -435,7 +455,7 @@ export default {
       if (!this.state.myTurn) {
         return;
       }
-      this.playzoneSelection = null;
+      this.battlezoneSelection = null;
       if (this.handSelection === card) {
         this.handSelection = null;
         return;
@@ -513,41 +533,41 @@ export default {
       this.previewCard = null;
     },
 
-    onPlayzoneClicked(card) {
+    onbattlezoneClicked(card) {
       if (!this.state.myTurn) {
         return;
       }
       this.handSelection = null;
-      if (this.playzoneSelection && this.playzoneSelection === card) {
-        this.playzoneSelection = null;
+      if (this.battlezoneSelection && this.battlezoneSelection === card) {
+        this.battlezoneSelection = null;
         return;
       }
       if (card.tapped) {
         return;
       }
-      this.playzoneSelection = card;
+      this.battlezoneSelection = card;
     },
 
     attackPlayer() {
-      if (!this.playzoneSelection) {
+      if (!this.battlezoneSelection) {
         return;
       }
       this.ws.send(
         JSON.stringify({
           header: "attack_player",
-          id: this.playzoneSelection.id
+          id: this.battlezoneSelection.id
         })
       );
     },
     
     attackCreature() {
-      if (!this.playzoneSelection) {
+      if (!this.battlezoneSelection) {
         return;
       }
       this.ws.send(
         JSON.stringify({
           header: "attack_creature",
-          id: this.playzoneSelection.id
+          id: this.battlezoneSelection.id
         })
       );
     }
@@ -608,7 +628,7 @@ export default {
             this.started = true;
           }
           this.handSelection = null;
-          this.playzoneSelection = null;
+          this.battlezoneSelection = null;
 
           if(this.state.myTurn !== data.state.myTurn) {
             turnSound.play();
@@ -1050,14 +1070,14 @@ export default {
 }
 
 .stage {
-  width: calc(93% - 301px);
-  height: 41vh;
+  width: calc(100% - 301px);
+  height: 48vh;
   float: left;
 }
 
 .right-stage {
-  width: 7%;
-  height: 41vh;
+  width: 10%;
+  height: 35vh;
   float: right;
 }
 
@@ -1076,17 +1096,12 @@ export default {
   border-top: 1px solid #555;
 }
 
-.hand {
-  width: calc(100% - 301px);
-  float: left;
-}
-
 .card {
   display: inline-block;
   margin: 0.8%;
   margin-bottom: 0;
   img {
-    height: 18vh;
+    height: 12vh;
     border-radius: 8px;
   }
 }
@@ -1101,39 +1116,33 @@ export default {
   margin-right: 1%;
 }
 
-.playzone {
+.battlezone {
   overflow: auto;
   white-space: nowrap;
   overflow-y: hidden;
-  height: 20vh;
+  height: 16vh;
 }
 
-.playzone .tapped {
+.battlezone .tapped {
   margin-left: 35px;
   margin-right: 35px;
 }
 
-.set-card {
-  img {
-    height: 8.5vh;
-  }
-}
-
-.spellzone {
+.hiddenzone {
   overflow: auto;
   white-space: nowrap;
   overflow-y: hidden;
-  height: 10vh;
+  height: 16vh;
 }
 
 .hand {
   img {
-    height: 15vh;
+    height: 12vh;
   }
   overflow: auto;
   white-space: nowrap;
   overflow-y: hidden;
-  height: 17vh;
+  height: 16vh;
 }
 
 .cards-preview {
@@ -1151,4 +1160,5 @@ export default {
   border-radius: 7px;
   margin: 10px;
 }
+
 </style>

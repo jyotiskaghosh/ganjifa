@@ -32,6 +32,8 @@ func Ambush(card *match.Card, ctx *match.Context) {
 				return
 			}
 
+			defer card.Tap(true)
+
 			ctx.Match.NewAction(card.Player, nil, 0, 0, fmt.Sprintf("Should %s ambush?", card.Name), true)
 			defer ctx.Match.CloseAction(card.Player)
 

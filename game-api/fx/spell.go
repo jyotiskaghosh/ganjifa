@@ -1,8 +1,6 @@
 package fx
 
 import (
-	"fmt"
-
 	"github.com/jyotiskaghosh/ganjifa/game-api/match"
 	"github.com/sirupsen/logrus"
 )
@@ -23,13 +21,11 @@ func Spell(card *match.Card, ctx *match.Context) {
 						if err := card.MoveCard(match.GRAVEYARD); err != nil {
 							logrus.Debug(err)
 						}
-						ctx.Match.Chat("Server", fmt.Sprintf("%s moved to %s's %s", card.Name, card.Player.Name(), match.GRAVEYARD))
 					})
 					return
 				}
 			}
 
-			ctx.Match.WarnPlayer(card.Player, fmt.Sprintf("%s cannot be cast; conditions unsatisfied", card.Name))
 			ctx.InterruptFlow()
 		}
 
