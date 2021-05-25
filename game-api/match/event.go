@@ -43,7 +43,7 @@ type AttackCreature struct {
 	TargetID string
 }
 
-// React is fired when you play cards from spellzone during opponent's attack
+// React is fired when you play cards from hiddenzone during opponent's attack
 type React struct {
 	ID    string
 	Event interface{}

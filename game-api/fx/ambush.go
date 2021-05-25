@@ -28,24 +28,24 @@ func Ambush(card *match.Card, ctx *match.Context) {
 
 		ctx.ScheduleAfter(func() {
 
-			if card.Tapped() || card.Zone != match.BATTLEZONE {
+			if card.Tapped() || card.Zone() != match.BATTLEZONE {
 				return
 			}
 
 			defer card.Tap(true)
 
-			ctx.Match.NewAction(card.Player, nil, 0, 0, fmt.Sprintf("Should %s ambush?", card.Name), true)
-			defer ctx.Match.CloseAction(card.Player)
+			ctx.Match.NewAction(card.Player(), nil, 0, 0, fmt.Sprintf("Should %s ambush?", card.Name()), true)
+			defer ctx.Match.CloseAction(card.Player())
 
 			for {
 				select {
-				case <-card.Player.Action:
+				case <-card.Player().Action:
 					{
 						switch event := event.Event.(type) {
 
 						case *match.AttackPlayer:
 							{
-								c, err := ctx.Match.Opponent(card.Player).GetCard(event.ID)
+								c, err := ctx.Match.Opponent(card.Player()).GetCard(event.ID)
 								if err != nil {
 									logrus.Debug(err)
 									return
@@ -56,7 +56,7 @@ func Ambush(card *match.Card, ctx *match.Context) {
 
 						case *match.AttackCreature:
 							{
-								c, err := ctx.Match.Opponent(card.Player).GetCard(event.ID)
+								c, err := ctx.Match.Opponent(card.Player()).GetCard(event.ID)
 								if err != nil {
 									logrus.Debug(err)
 									return
@@ -69,7 +69,7 @@ func Ambush(card *match.Card, ctx *match.Context) {
 						return
 					}
 
-				case cancel := <-card.Player.Cancel:
+				case cancel := <-card.Player().Cancel:
 					if cancel {
 						return
 					}

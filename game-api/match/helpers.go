@@ -94,8 +94,8 @@ func AmIPlayed(card *Card, ctx *Context) bool {
 // Evolution handles evolution
 func Evolution(card *Card, ctx *Context, text string, filter func(*Card) bool) {
 
-	creatures := card.Player.Filter(
-		card.Player.battlezone,
+	creatures := card.player.Filter(
+		card.player.battlezone,
 		text,
 		1,
 		1,
@@ -123,8 +123,8 @@ func Evolution(card *Card, ctx *Context, text string, filter func(*Card) bool) {
 // Equipment handles equiping
 func Equipment(card *Card, ctx *Context, text string, filter func(*Card) bool) {
 
-	creatures := card.Player.Filter(
-		card.Player.battlezone,
+	creatures := card.player.Filter(
+		card.player.battlezone,
 		text,
 		1,
 		1,
@@ -152,7 +152,7 @@ func Equipment(card *Card, ctx *Context, text string, filter func(*Card) bool) {
 // RemoveEquipments ...
 func (c *Card) RemoveEquipments() {
 	for _, c = range c.Attachments() {
-		if c.Family == family.Equipment {
+		if c.family == family.Equipment {
 			if err := c.MoveCard(GRAVEYARD); err != nil {
 				logrus.Debug(err)
 				return

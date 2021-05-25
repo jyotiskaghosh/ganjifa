@@ -14,527 +14,589 @@ import (
 // EnergySurge ...
 func EnergySurge() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Energy Surge",
 		Rank:   0,
 		Civ:    civ.AGNI,
 		Family: family.Spell,
-	}
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
+				if match.AmIPlayed(card, ctx) {
 
-		if match.AmIPlayed(card, ctx) {
+					ctx.Override(func() {
 
-			ctx.Override(func() {
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
 
-				creatures := card.Player.Search(
-					card.Player.GetCreatures(),
-					"Select 1 of your creatures",
-					1,
-					1,
-					false)
+						creatures := card.Player().Search(
+							card.Player().GetCreatures(),
+							"Select 1 of your creatures",
+							1,
+							1,
+							false)
 
-				for _, c := range creatures {
-					c.AddCondition(func(card *match.Card, ctx *match.Context) {
-						fx.AttackModifier(card, ctx, 400)
-						ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player.Name(), card.Name, c.Name))
+						for _, c := range creatures {
+							c.AddCondition(func(card *match.Card, ctx *match.Context) {
+								fx.AttackModifier(card, ctx, 400)
+								ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player().Name(), card.Name(), c.Name()))
+							})
+						}
 					})
 				}
-			})
-		}
-	})
+			},
+		},
+	}
 
-	return c
+	return cb.Build()
 }
 
 // Fireball ...
 func Fireball() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Fireball",
 		Rank:   0,
 		Civ:    civ.AGNI,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						creatures := card.Player().Filter(
+							ctx.Match.Opponent(card.Player()).GetCreatures(),
+							"Select 1 of your opponent's creature with defense 200 or lesser",
+							1,
+							1,
+							false,
+							func(x *match.Card) bool { return x.GetDefence(ctx) <= 200 })
+
+						for _, c := range creatures {
+							ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name(), card.Name()))
+						}
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-
-				creatures := card.Player.Filter(
-					ctx.Match.Opponent(card.Player).GetCreatures(),
-					"Select 1 of your opponent's creature with defense 200 or lesser",
-					1,
-					1,
-					false,
-					func(x *match.Card) bool { return x.GetDefence(ctx) <= 200 })
-
-				for _, c := range creatures {
-					ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name, card.Name))
-				}
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // RainOfArrows ...
 func RainOfArrows() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Rain Of Arrows",
 		Rank:   0,
 		Civ:    civ.AGNI,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						for _, c := range append(card.Player().GetCreatures(), ctx.Match.Opponent(card.Player()).GetCreatures()...) {
+
+							if c.GetDefence(ctx) <= 100 {
+								ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name(), card.Name()))
+							}
+						}
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-
-				for _, c := range append(card.Player.GetCreatures(), ctx.Match.Opponent(card.Player).GetCreatures()...) {
-
-					if c.GetDefence(ctx) <= 100 {
-						ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name, card.Name))
-					}
-				}
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // MagmaGeyser ...
 func MagmaGeyser() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "MagmaGeyser",
 		Rank:   1,
 		Civ:    civ.AGNI,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						creatures := card.Player().Filter(
+							ctx.Match.Opponent(card.Player()).GetCreatures(),
+							"Select 1 of your opponent's creature with defense 400 or lesser",
+							1,
+							1,
+							false,
+							func(x *match.Card) bool { return x.GetDefence(ctx) <= 400 })
+
+						for _, c := range creatures {
+							ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name(), card.Name()))
+						}
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-
-				creatures := card.Player.Filter(
-					ctx.Match.Opponent(card.Player).GetCreatures(),
-					"Select 1 of your opponent's creature with defense 400 or lesser",
-					1,
-					1,
-					false,
-					func(x *match.Card) bool { return x.GetDefence(ctx) <= 400 })
-
-				for _, c := range creatures {
-					ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name, card.Name))
-				}
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // Degenerate ...
 func Degenerate() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Degenerate",
 		Rank:   0,
 		Civ:    civ.PRITHVI,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						creatures := card.Player().Search(
+							ctx.Match.Opponent(card.Player()).GetCreatures(),
+							"Select 1 of your opponent's creature",
+							1,
+							1,
+							false)
+
+						for _, c := range creatures {
+
+							creatures = ctx.Match.Opponent(card.Player()).Filter(
+								c.Attachments(),
+								"Select a card",
+								1,
+								1,
+								false,
+								func(x *match.Card) bool { return x.Family() != family.Equipment })
+
+							if len(creatures) < 1 {
+								ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name(), card.Name()))
+								return
+							}
+
+							if err := creatures[0].MoveCard(match.BATTLEZONE); err != nil {
+								logrus.Debug(err)
+							}
+
+							for _, c := range c.Attachments() {
+								c.AttachTo(creatures[0])
+							}
+
+							// This is done to maintain a single identity for a creature
+							card.ID, creatures[0].ID = creatures[0].ID, card.ID
+
+							ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name(), card.Name()))
+						}
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-
-				creatures := card.Player.Search(
-					ctx.Match.Opponent(card.Player).GetCreatures(),
-					"Select 1 of your opponent's creature",
-					1,
-					1,
-					false)
-
-				for _, c := range creatures {
-
-					creatures = ctx.Match.Opponent(card.Player).Filter(
-						c.Attachments(),
-						"Select a creature",
-						1,
-						1,
-						false,
-						func(x *match.Card) bool { return x.Family != family.Equipment })
-
-					if len(creatures) < 1 {
-						ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name, card.Name))
-						return
-					}
-
-					if err := creatures[0].MoveCard(match.BATTLEZONE); err != nil {
-						logrus.Debug(err)
-					}
-
-					c.AttachTo(creatures[0])
-
-					// This is done to maintain a single identity for a creature
-					card.ID, creatures[0].ID = creatures[0].ID, card.ID
-
-					ctx.Match.Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name, card.Name))
-				}
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // LeechLife ...
 func LeechLife() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Leech Life",
 		Rank:   0,
 		Civ:    civ.PRITHVI,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						creatures := card.Player().Search(
+							card.Player().GetCreatures(),
+							"Select 1 of your creature",
+							1,
+							1,
+							false)
+
+						for _, c := range creatures {
+							c.AddCondition(func(card *match.Card, ctx *match.Context) {
+								fx.AttackModifier(card, ctx, 200)
+							})
+							c.AddCondition(fx.Leech)
+							ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player().Name(), card.Name(), c.Name()))
+						}
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-
-				creatures := card.Player.Search(
-					card.Player.GetCreatures(),
-					"Select 1 of your creature",
-					1,
-					1,
-					false)
-
-				for _, c := range creatures {
-					c.AddCondition(func(card *match.Card, ctx *match.Context) {
-						fx.AttackModifier(card, ctx, 200)
-					})
-					c.AddCondition(fx.Leech)
-					ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player.Name(), card.Name, c.Name))
-				}
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // RapidEvolution ...
 func RapidEvolution() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Rapid Evolution",
 		Rank:   0,
 		Civ:    civ.PRITHVI,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						creatures := card.Player().Filter(
+							card.Player().GetCreatures(),
+							"Select 1 of your creature",
+							1,
+							1,
+							false,
+							func(x *match.Card) bool { return !x.Tapped() && x.HasCondition(fx.CantEvolve) })
+
+						for _, c := range creatures {
+							c.RemoveCondition(fx.CantEvolve)
+							c.Tap(true)
+							ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player().Name(), card.Name(), c.Name()))
+						}
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-
-				creatures := card.Player.Filter(
-					card.Player.GetCreatures(),
-					"Select 1 of your creature",
-					1,
-					1,
-					false,
-					func(x *match.Card) bool { return !x.Tapped() && x.HasCondition(fx.CantEvolve) })
-
-				for _, c := range creatures {
-					c.RemoveCondition(fx.CantEvolve)
-					c.Tap(true)
-					ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player.Name(), card.Name, c.Name))
-				}
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // AirMail ...
 func AirMail() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Air Mail",
 		Rank:   0,
 		Civ:    civ.VAYU,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						cards, err := card.Player().Container(match.DECK)
+						if err != nil {
+							ctx.InterruptFlow()
+							logrus.Debug(err)
+							return
+						}
+
+						cards = card.Player().Search(
+							cards,
+							"Select a card",
+							1,
+							1,
+							false)
+
+						for _, c := range cards {
+							if err := c.MoveCard(match.HAND); err != nil {
+								logrus.Debug(err)
+								return
+							}
+							ctx.Match.Chat("Server", fmt.Sprintf("%s was moved from %s's deck to their hand", c.Name(), c.Player().Name()))
+						}
+
+						card.Player().ShuffleDeck()
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-
-				cards, err := card.Player.Container(match.DECK)
-				if err != nil {
-					ctx.InterruptFlow()
-					logrus.Debug(err)
-					return
-				}
-
-				cards = card.Player.Search(
-					cards,
-					"Select a card",
-					1,
-					1,
-					false)
-
-				for _, c := range cards {
-					if err := c.MoveCard(match.HAND); err != nil {
-						logrus.Debug(err)
-						return
-					}
-					ctx.Match.Chat("Server", fmt.Sprintf("%s was moved from %s's deck to their hand", c.Name, c.Player.Name()))
-				}
-
-				card.Player.ShuffleDeck()
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // Whirlwind ...
 func Whirlwind() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Whirlwind",
 		Rank:   0,
 		Civ:    civ.VAYU,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						cards, err := ctx.Match.Opponent(card.Player()).Container(match.HIDDENZONE)
+						if err != nil {
+							ctx.InterruptFlow()
+							logrus.Debug(err)
+							return
+						}
+
+						cards = card.Player().Search(
+							cards,
+							"Select a card",
+							1,
+							1,
+							false)
+
+						for _, c := range cards {
+							if err := c.MoveCard(match.GRAVEYARD); err != nil {
+								logrus.Debug(err)
+							}
+							ctx.Match.Chat("Server", fmt.Sprintf("%s was moved to %s %s by %s", c.Name(), c.Player().Name(), match.GRAVEYARD, card.Name()))
+						}
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-
-				cards, err := ctx.Match.Opponent(card.Player).Container(match.HIDDENZONE)
-				if err != nil {
-					ctx.InterruptFlow()
-					logrus.Debug(err)
-					return
-				}
-
-				cards = card.Player.Search(
-					cards,
-					"Select a card",
-					1,
-					1,
-					false)
-
-				for _, c := range cards {
-					if err := c.MoveCard(match.GRAVEYARD); err != nil {
-						logrus.Debug(err)
-					}
-					ctx.Match.Chat("Server", fmt.Sprintf("%s was moved to %s %s by %s", c.Name, c.Player.Name(), match.GRAVEYARD, card.Name))
-				}
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // Tailwind ...
 func Tailwind() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Tailwind",
 		Rank:   0,
 		Civ:    civ.VAYU,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						creatures := card.Player().Search(
+							card.Player().GetCreatures(),
+							"Select 1 of your creature",
+							1,
+							1,
+							false)
+
+						for _, c := range creatures {
+							c.AddCondition(fx.CantBeBlocked)
+							ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player().Name(), card.Name(), c.Name()))
+						}
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-
-				creatures := card.Player.Search(
-					card.Player.GetCreatures(),
-					"Select 1 of your creature",
-					1,
-					1,
-					false)
-
-				for _, c := range creatures {
-					c.AddCondition(fx.CantBeBlocked)
-					ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player.Name(), card.Name, c.Name))
-				}
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // Tornado ...
 func Tornado() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Tornado",
 		Rank:   1,
 		Civ:    civ.VAYU,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						creatures := card.Player().Search(
+							ctx.Match.Opponent(card.Player()).GetCreatures(),
+							"Select 1 of your opponent's creature",
+							1,
+							1,
+							false)
+
+						for _, c := range creatures {
+							if err := c.MoveCard(match.DECK); err != nil {
+								logrus.Debug(err)
+							}
+							ctx.Match.Chat("Server", fmt.Sprintf("%s was moved to %s %s by %s", c.Name(), c.Player().Name(), match.DECK, card.Name()))
+						}
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-
-				creatures := card.Player.Search(
-					ctx.Match.Opponent(card.Player).GetCreatures(),
-					"Select 1 of your opponent's creature",
-					1,
-					1,
-					false)
-
-				for _, c := range creatures {
-					if err := c.MoveCard(match.DECK); err != nil {
-						logrus.Debug(err)
-					}
-					ctx.Match.Chat("Server", fmt.Sprintf("%s was moved to %s %s by %s", c.Name, c.Player.Name(), match.DECK, card.Name))
-				}
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // FrostBreath ...
 func FrostBreath() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "FrostBreath",
 		Rank:   0,
 		Civ:    civ.APAS,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						creatures := card.Player().Filter(
+							ctx.Match.Opponent(card.Player()).GetCreatures(),
+							"Select 1 of your opponent's creature",
+							1,
+							1,
+							false,
+							func(x *match.Card) bool { return !x.Tapped() },
+						)
+
+						for _, c := range creatures {
+							c.Tap(true)
+							ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player().Name(), card.Name(), c.Name()))
+						}
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-
-				creatures := card.Player.Filter(
-					ctx.Match.Opponent(card.Player).GetCreatures(),
-					"Select 1 of your opponent's creature",
-					1,
-					1,
-					false,
-					func(x *match.Card) bool { return !x.Tapped() },
-				)
-
-				for _, c := range creatures {
-					c.Tap(true)
-					ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player.Name(), card.Name, c.Name))
-				}
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // TidalWave ...
 func TidalWave() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Tidal Wave",
 		Rank:   1,
 		Civ:    civ.APAS,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						card.Player().DrawCards(2)
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-				card.Player.DrawCards(2)
-				ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s", card.Player.Name(), card.Name))
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // Amrita ...
 func Amrita() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Amrita",
 		Rank:   1,
 		Civ:    civ.APAS,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						card.Player().Heal(card, ctx, 800)
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-				card.Player.Heal(card, ctx, 800)
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }
 
 // Blizzard ...
 func Blizzard() *match.Card {
 
-	c := &match.Card{
+	cb := match.CardBuilder{
 		Name:   "Blizzard",
 		Rank:   2,
 		Civ:    civ.APAS,
 		Family: family.Spell,
+		Handlers: []match.HandlerFunc{
+			fx.Spell,
+			func(card *match.Card, ctx *match.Context) {
+
+				if match.AmIPlayed(card, ctx) {
+
+					ctx.Override(func() {
+
+						ctx.Match.Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+
+						for _, c := range ctx.Match.Opponent(card.Player()).GetCreatures() {
+							c.Tap(true)
+						}
+					})
+				}
+			},
+		},
 	}
 
-	c.Use(fx.Spell, func(card *match.Card, ctx *match.Context) {
-
-		if match.AmIPlayed(card, ctx) {
-
-			ctx.Override(func() {
-
-				for _, c := range ctx.Match.Opponent(card.Player).GetCreatures() {
-					c.Tap(true)
-					ctx.Match.Chat("Server", fmt.Sprintf("%s used spell %s", card.Player.Name(), card.Name))
-				}
-			})
-		}
-	})
-
-	return c
+	return cb.Build()
 }

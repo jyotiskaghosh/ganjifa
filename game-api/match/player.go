@@ -88,7 +88,7 @@ func newPlayer(match *Match, turn bool) *Player {
 
 // Name returns the username of the player
 func (p *Player) Name() string {
-	pr, err := p.match.PlayerRef(p)
+	pr, err := p.match.playerRef(p)
 	if err != nil {
 		logrus.Debug(err)
 		return "unknown"
@@ -97,13 +97,18 @@ func (p *Player) Name() string {
 	return pr.Name
 }
 
+// IsPlayerTurn is it the Player's turnNo
+func (p *Player) IsPlayerTurn() bool {
+	return p.turn
+}
+
 // Turn returns turn no.
 func (p *Player) Turn() int {
 	return p.turnNo
 }
 
-// ContainerRef returns a pointer to one of the player's card zones based on the specified string
-func (p *Player) ContainerRef(c Container) (*[]*Card, error) {
+// containerRef returns a pointer to one of the player's card zones based on the specified string
+func (p *Player) containerRef(c Container) (*[]*Card, error) {
 
 	switch c {
 	case DECK:
@@ -158,8 +163,8 @@ func (p *Player) MapContainer(containerName Container, fnc func(*Card)) {
 	}
 }
 
-// CreateDeck initializes a new deck from a list of card ids
-func (p *Player) CreateDeck(cards []int) error {
+// createDeck initializes a new deck from a list of card ids
+func (p *Player) createDeck(cards []int) error {
 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -184,8 +189,8 @@ func (p *Player) CreateDeck(cards []int) error {
 	count := make(map[int]int)
 
 	for _, card := range deck {
-		count[card.CardID]++
-		if count[card.CardID] > 4 {
+		count[card.cardID]++
+		if count[card.cardID] > 4 {
 			return errors.New("deck must have only 4 copies of a card")
 		}
 	}
@@ -300,7 +305,7 @@ func (p *Player) Damage(source *Card, ctx *Context, health int) {
 	})
 
 	ctx.ScheduleAfter(func() {
-		ctx.Match.Chat("Server", fmt.Sprintf("%s did %d damage to %s", source.Name, health, p.Name()))
+		ctx.Match.Chat("Server", fmt.Sprintf("%s did %d damage to %s", source.name, health, p.Name()))
 	})
 
 	ctx.Match.HandleFx(ctx)
@@ -335,7 +340,7 @@ func (p *Player) Heal(source *Card, ctx *Context, health int) {
 	})
 
 	ctx.ScheduleAfter(func() {
-		ctx.Match.Chat("Server", fmt.Sprintf("%s healed %d life for %s", source.Name, health, p.Name()))
+		ctx.Match.Chat("Server", fmt.Sprintf("%s healed %d life for %s", source.name, health, p.Name()))
 	})
 
 	ctx.Match.HandleFx(ctx)
@@ -343,13 +348,8 @@ func (p *Player) Heal(source *Card, ctx *Context, health int) {
 	ctx.Match.BroadcastState()
 }
 
-// IsPlayerTurn is it the Player's turnNo
-func (p *Player) IsPlayerTurn() bool {
-	return p.turn
-}
-
-// Denormalized returns a server.PlayerState
-func (p *Player) Denormalized() PlayerState {
+// denormalized returns a server.PlayerState
+func (p *Player) denormalized() PlayerState {
 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -375,9 +375,9 @@ func denormalizeCards(cards []*Card) []CardState {
 
 		cs := CardState{
 			ID:            card.ID,
-			UID:           card.CardID,
-			Name:          card.Name,
-			Civ:           card.Civ,
+			UID:           card.cardID,
+			Name:          card.name,
+			Civ:           card.civ,
 			Tapped:        card.tapped,
 			AttachedCards: denormalizeCards(card.Attachments()),
 		}
@@ -388,8 +388,8 @@ func denormalizeCards(cards []*Card) []CardState {
 	return arr
 }
 
-// HideCards takes an array of *Card and returns an array of empty CardStates
-func HideCards(n int) []CardState {
+// hideCards takes an array of *Card and returns an array of empty CardStates
+func hideCards(n int) []CardState {
 
 	arr := make([]CardState, 0)
 

@@ -11,7 +11,7 @@ func Leech(card *match.Card, ctx *match.Context) {
 		if event.Source == card {
 
 			ctx.ScheduleAfter(func() {
-				card.Player.Heal(card, ctx, event.Health)
+				card.Player().Heal(card, ctx, event.Health)
 			})
 		}
 
@@ -19,7 +19,7 @@ func Leech(card *match.Card, ctx *match.Context) {
 		if event.Source == card {
 
 			ctx.ScheduleAfter(func() {
-				card.Player.Heal(card, ctx, event.Card.GetDefence(ctx))
+				card.Player().Heal(card, ctx, event.Card.GetDefence(ctx))
 			})
 		}
 	}

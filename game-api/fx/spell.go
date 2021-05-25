@@ -14,9 +14,9 @@ func Spell(card *match.Card, ctx *match.Context) {
 	case *match.PlayCardEvent:
 		if event.ID == card.ID {
 
-			for _, creature := range card.Player.GetCreatures() {
+			for _, creature := range card.Player().GetCreatures() {
 
-				if creature.HasCivilisation(card.Civ, ctx) && card.GetRank(ctx) <= creature.GetRank(ctx) {
+				if creature.HasCivilisation(card.Civ(), ctx) && card.GetRank(ctx) <= creature.GetRank(ctx) {
 					ctx.ScheduleAfter(func() {
 						if err := card.MoveCard(match.GRAVEYARD); err != nil {
 							logrus.Debug(err)

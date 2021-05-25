@@ -34,8 +34,8 @@ func New() *Match {
 	return m
 }
 
-// PlayerRef returns the player ref for a given player
-func (m *Match) PlayerRef(p *Player) (*PlayerReference, error) {
+// playerRef returns the player ref for a given player
+func (m *Match) playerRef(p *Player) (*PlayerReference, error) {
 
 	if m.player1.Player == p {
 		return m.player1, nil
@@ -137,7 +137,7 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
-			if err := pr.Player.CreateDeck(msg.Cards); err != nil {
+			if err := pr.Player.createDeck(msg.Cards); err != nil {
 				Warn(pr, err.Error())
 				return
 			}
@@ -145,7 +145,7 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 			m.Chat("Server", fmt.Sprintf("%s has chosen their deck", pr.Name))
 
 			if m.player1 != nil && m.player2 != nil && m.player1.Player.ready && m.player2.Player.ready {
-				m.Start()
+				m.start()
 			}
 		}
 
@@ -160,8 +160,8 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
-			m.Wait(true)
-			defer m.Wait(false)
+			m.waiting(true)
+			defer m.waiting(false)
 
 			m.EndTurn()
 		}
@@ -177,8 +177,8 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
-			m.Wait(true)
-			defer m.Wait(false)
+			m.waiting(true)
+			defer m.waiting(false)
 
 			var msg struct {
 				ID string `json:"id"`
@@ -213,8 +213,8 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
-			m.Wait(true)
-			defer m.Wait(false)
+			m.waiting(true)
+			defer m.waiting(false)
 
 			var msg struct {
 				ID string `json:"id"`
@@ -268,8 +268,8 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
-			m.Wait(true)
-			defer m.Wait(false)
+			m.waiting(true)
+			defer m.waiting(false)
 
 			if pr.Player.turnNo == 1 && pr == m.player1 {
 				Warn(pr, "player 1 can't attack on first turn")
@@ -298,8 +298,8 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
-			m.Wait(true)
-			defer m.Wait(false)
+			m.waiting(true)
+			defer m.waiting(false)
 
 			if pr.Player.turnNo == 1 && pr == m.player1 {
 				Warn(pr, "player 1 can't attack on first turn")
@@ -373,19 +373,16 @@ func (m *Match) Chat(sender string, message string) {
 	m.player2.Write(msg)
 }
 
-// MessagePlayer sends a message to a player
-func (m *Match) MessagePlayer(p *Player, message string) {
+// WritePlayer sends a message to a player
+func (m *Match) WritePlayer(p *Player, msg interface{}) {
 
-	pr, err := m.PlayerRef(p)
+	pr, err := m.playerRef(p)
 	if err != nil {
 		logrus.Debug(err)
 		return
 	}
-	pr.Write(ChatMessage{
-		Header:  "chat",
-		Message: message,
-		Sender:  "server",
-	})
+
+	pr.Write(msg)
 }
 
 // Warn sends a warning to the specified player ref
@@ -400,19 +397,16 @@ func Warn(p *PlayerReference, message string) {
 // WarnPlayer sends a warning to the specified player
 func (m *Match) WarnPlayer(p *Player, message string) {
 
-	pr, err := m.PlayerRef(p)
-	if err != nil {
-		logrus.Debug(err)
-		return
-	}
-
-	Warn(pr, message)
+	m.WritePlayer(p, ChatMessage{
+		Header:  "warn",
+		Message: message,
+	})
 }
 
 // Battle handles a battle between two creatures
 func (m *Match) Battle(attacker *Card, defender *Card, blocked bool) {
 
-	if attacker.Zone != BATTLEZONE || defender.Zone != BATTLEZONE {
+	if attacker.zone != BATTLEZONE || defender.zone != BATTLEZONE {
 		return
 	}
 
@@ -420,7 +414,7 @@ func (m *Match) Battle(attacker *Card, defender *Card, blocked bool) {
 
 	ctx.Override(func() {
 		if attacker.GetAttack(ctx) > defender.GetDefence(ctx) {
-			m.Destroy(defender, attacker, fmt.Sprintf("%s was destroyed by %s", defender.Name, attacker.Name))
+			m.Destroy(defender, attacker, fmt.Sprintf("%s was destroyed by %s", defender.name, attacker.name))
 		}
 	})
 
@@ -526,8 +520,8 @@ func (m *Match) BroadcastState() {
 		}
 	}()
 
-	player1 := m.player1.Player.Denormalized()
-	player2 := m.player2.Player.Denormalized()
+	player1 := m.player1.Player.denormalized()
+	player2 := m.player2.Player.denormalized()
 
 	p1state := StateMessage{
 		Header: "state_update",
@@ -547,11 +541,11 @@ func (m *Match) BroadcastState() {
 		},
 	}
 
-	p1state.State.Opponent.Hand = HideCards(len(p1state.State.Opponent.Hand))
-	p1state.State.Opponent.Hiddenzone = HideCards(len(p1state.State.Opponent.Hiddenzone))
+	p1state.State.Opponent.Hand = hideCards(len(p1state.State.Opponent.Hand))
+	p1state.State.Opponent.Hiddenzone = hideCards(len(p1state.State.Opponent.Hiddenzone))
 
-	p2state.State.Opponent.Hand = HideCards(len(p2state.State.Opponent.Hand))
-	p2state.State.Opponent.Hiddenzone = HideCards(len(p2state.State.Opponent.Hiddenzone))
+	p2state.State.Opponent.Hand = hideCards(len(p2state.State.Opponent.Hand))
+	p2state.State.Opponent.Hiddenzone = hideCards(len(p2state.State.Opponent.Hiddenzone))
 
 	m.player1.Write(p1state)
 	m.player2.Write(p2state)
@@ -571,13 +565,7 @@ func (m *Match) End(winner *Player, reason string) {
 // NewAction prompts the user to make a selection of the specified []Cards
 func (m *Match) NewAction(p *Player, cards []*Card, minSelections int, maxSelections int, text string, cancellable bool) {
 
-	pr, err := m.PlayerRef(p)
-	if err != nil {
-		logrus.Debug(err)
-		return
-	}
-
-	pr.Write(ActionMessage{
+	m.WritePlayer(p, ActionMessage{
 		Header:        "action",
 		Cards:         denormalizeCards(cards),
 		Text:          text,
@@ -590,13 +578,7 @@ func (m *Match) NewAction(p *Player, cards []*Card, minSelections int, maxSelect
 // CloseAction closes the card selection popup for the given player
 func (m *Match) CloseAction(p *Player) {
 
-	pr, err := m.PlayerRef(p)
-	if err != nil {
-		logrus.Debug(err)
-		return
-	}
-
-	pr.Write(Message{
+	m.WritePlayer(p, Message{
 		Header: "close_action",
 	})
 }
@@ -604,13 +586,7 @@ func (m *Match) CloseAction(p *Player) {
 // ShowCards shows the specified cards to the player with a message of why it is being shown
 func (m *Match) ShowCards(p *Player, message string, cards []string) {
 
-	pr, err := m.PlayerRef(p)
-	if err != nil {
-		logrus.Debug(err)
-		return
-	}
-
-	pr.Write(ShowCardsMessage{
+	m.WritePlayer(p, ShowCardsMessage{
 		Header:  "show_cards",
 		Message: message,
 		Cards:   cards,
@@ -629,8 +605,8 @@ func (m *Match) changeCurrentPlayer() {
 	m.player2.Player.mutex.Unlock()
 }
 
-// Start starts the match
-func (m *Match) Start() {
+// start starts the match
+func (m *Match) start() {
 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -645,14 +621,14 @@ func (m *Match) Start() {
 
 	m.Chat("Server", "The match has begun!")
 
-	// This is done to offset BeginNewTurn which changes current player
+	// This is done to offset beginNewTurn which changes current player
 	m.changeCurrentPlayer()
 
-	m.BeginNewTurn()
+	m.beginNewTurn()
 }
 
-// Wait assigns bool value to m.wait
-func (m *Match) Wait(wait bool) {
+// waiting assigns bool value to m.wait
+func (m *Match) waiting(wait bool) {
 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -660,8 +636,8 @@ func (m *Match) Wait(wait bool) {
 	m.wait = wait
 }
 
-// BeginNewTurn starts a new.turn
-func (m *Match) BeginNewTurn() {
+// beginNewTurn starts a new turn
+func (m *Match) beginNewTurn() {
 
 	m.changeCurrentPlayer()
 	m.CurrentPlayer().Player.turnNo++
@@ -670,29 +646,29 @@ func (m *Match) BeginNewTurn() {
 
 	m.BroadcastState()
 
-	m.UntapStep()
+	m.untapStep()
 }
 
-// UntapStep ...
-func (m *Match) UntapStep() {
+// untapStep ...
+func (m *Match) untapStep() {
 
 	m.HandleFx(NewContext(m, &UntapStep{}))
 
-	m.StartOfTurnStep()
+	m.startOfTurnStep()
 }
 
-// StartOfTurnStep ...
-func (m *Match) StartOfTurnStep() {
+// startOfTurnStep ...
+func (m *Match) startOfTurnStep() {
 
 	m.HandleFx(NewContext(m, &StartOfTurnStep{}))
 
 	m.Chat("Server", fmt.Sprintf("Your turn, %s", m.CurrentPlayer().Player.Name()))
 
-	m.DrawStep()
+	m.drawStep()
 }
 
-// DrawStep ...
-func (m *Match) DrawStep() {
+// drawStep ...
+func (m *Match) drawStep() {
 
 	m.HandleFx(NewContext(m, &DrawStep{}))
 
@@ -702,18 +678,18 @@ func (m *Match) DrawStep() {
 	m.BroadcastState()
 }
 
-// EndStep ...
-func (m *Match) EndStep() {
+// endStep ...
+func (m *Match) endStep() {
 
 	m.HandleFx(NewContext(m, &EndStep{}))
 
 	m.Chat("Server", fmt.Sprintf("%s ended their turn", m.CurrentPlayer().Player.Name()))
 
-	m.BeginNewTurn()
+	m.beginNewTurn()
 }
 
 // EndTurn is called when the player attempts to end their turn
-// If the context is not cancelled by a card, the EndStep is called
+// If the context is not cancelled by a card, the endStep is called
 func (m *Match) EndTurn() {
 
 	ctx := NewContext(m, &EndTurnEvent{})
@@ -721,7 +697,7 @@ func (m *Match) EndTurn() {
 	m.HandleFx(ctx)
 
 	if !ctx.cancel {
-		m.EndStep()
+		m.endStep()
 	}
 }
 

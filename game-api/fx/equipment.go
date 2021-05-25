@@ -20,9 +20,9 @@ func Equipment(card *match.Card, ctx *match.Context) {
 				match.Equipment(
 					card,
 					ctx,
-					fmt.Sprintf("choose a creature to equip %s from your battlezone", card.Name),
+					fmt.Sprintf("choose a creature to equip %s from your battlezone", card.Name()),
 					func(x *match.Card) bool {
-						return x.HasCivilisation(card.Civ, ctx) && card.GetRank(ctx) <= x.GetRank(ctx)
+						return x.HasCivilisation(card.Civ(), ctx) && card.GetRank(ctx) <= x.GetRank(ctx)
 					})
 			})
 		}
@@ -31,14 +31,14 @@ func Equipment(card *match.Card, ctx *match.Context) {
 	case *match.GetAttackEvent:
 		if card.AttachedTo() == event.Card {
 
-			event.Attack += card.Attack
+			event.Attack += card.Attack()
 		}
 
 	// When calculating defence
 	case *match.GetDefenceEvent:
 		if card.AttachedTo() == event.Card {
 
-			event.Defence += card.Defence
+			event.Defence += card.Defence()
 		}
 
 	// When the equipment is played reactively
@@ -72,7 +72,7 @@ func Equipment(card *match.Card, ctx *match.Context) {
 
 				card.AttachTo(event.Creature)
 
-				ctx.Match.Chat("Server", fmt.Sprintf("%s equipped %s on %s", card.Player.Name(), card.Name, event.Creature.Name))
+				ctx.Match.Chat("Server", fmt.Sprintf("%s equipped %s on %s", card.Player().Name(), card.Name(), event.Creature.Name()))
 			})
 		}
 	}

@@ -31,8 +31,8 @@ func CreateCardCache() {
 
 			register = append(register, CardInfo{
 				UID:          uid,
-				Name:         card.Name,
-				Civilization: string(card.Civ),
+				Name:         card.Name(),
+				Civilization: string(card.Civ()),
 				Set:          setID,
 			})
 		}
