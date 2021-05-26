@@ -9,8 +9,8 @@ import (
 // DestroyEndOfTurn ...
 func DestroyEndOfTurn(card *match.Card, ctx *match.Context) {
 
-	if _, ok := ctx.Event.(*match.EndStep); ok && card.Zone() == match.BATTLEZONE {
+	if _, ok := ctx.Event().(*match.EndStep); ok && card.Zone() == match.BATTLEZONE {
 
-		ctx.Match.Destroy(card, nil, fmt.Sprintf("%s was destroyed", card.Name()))
+		ctx.Match().Destroy(card, nil, fmt.Sprintf("%s was destroyed", card.Name()))
 	}
 }

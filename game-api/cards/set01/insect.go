@@ -24,7 +24,7 @@ func Pipilika() *match.Card {
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 
-				if event, ok := ctx.Event.(*match.GetAttackEvent); ok && event.Card == card {
+				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.Card == card {
 
 					ctx.ScheduleAfter(func() {
 						event.Attack *= 2
@@ -73,7 +73,7 @@ func MahisiPipilika() *match.Card {
 					return
 				}
 
-				if _, ok := ctx.Event.(*match.BeginTurnStep); ok && card.Player().IsPlayerTurn() {
+				if _, ok := ctx.Event().(*match.BeginTurnStep); ok && card.Player().IsPlayerTurn() {
 
 					cards, err := card.Player().Container(match.DECK)
 					if err != nil {
@@ -82,7 +82,7 @@ func MahisiPipilika() *match.Card {
 						return
 					}
 
-					creatures := card.Player().Filter(
+					cards = card.Player().Filter(
 						cards,
 						fmt.Sprintf("Select 1 %s", family.Insect),
 						1,
@@ -91,25 +91,25 @@ func MahisiPipilika() *match.Card {
 						func(x *match.Card) bool { return x.Family() == family.Insect },
 					)
 
-					for _, c := range creatures {
+					for _, c := range cards {
 						if err := c.MoveCard(match.HAND); err != nil {
 							logrus.Debug(err)
 							return
 						}
-						ctx.Match.Chat("Server", fmt.Sprintf("%s was moved from %s's deck to their hand", c.Name(), card.Player().Name()))
+						ctx.Match().Chat("Server", fmt.Sprintf("%s was moved from %s's deck to their hand", c.Name(), card.Player().Name()))
 					}
 
 					card.Player().ShuffleDeck()
 				}
 
-				if event, ok := ctx.Event.(*match.GetAttackEvent); ok && event.Card != card {
+				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.Card != card {
 
 					if event.Card.Player() == card.Player() && event.Card.HasFamily(family.Insect, ctx) {
 						event.Attack += 100
 					}
 				}
 
-				if event, ok := ctx.Event.(*match.GetDefenceEvent); ok && event.Card != card {
+				if event, ok := ctx.Event().(*match.GetDefenceEvent); ok && event.Card != card {
 
 					if event.Card.Player() == card.Player() && event.Card.HasFamily(family.Insect, ctx) {
 						event.Defence += 100

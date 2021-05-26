@@ -24,8 +24,8 @@ func Salavrka() *match.Card {
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 
-				if creatures, err := card.Player().Container(match.BATTLEZONE); err == nil {
-					for _, c := range creatures {
+				if cards, err := card.Player().Container(match.BATTLEZONE); err == nil {
+					for _, c := range cards {
 						if c != card && c.Family() == family.Beast {
 							fx.AttackModifier(card, ctx, 100)
 							fx.DefenceModifier(card, ctx, 100)
@@ -74,6 +74,7 @@ func Krostr() *match.Card {
 				if match.AmIPlayed(card, ctx) {
 
 					ctx.ScheduleAfter(func() {
+
 						cards, err := card.Player().Container(match.DECK)
 						if err != nil {
 							ctx.InterruptFlow()
@@ -81,7 +82,7 @@ func Krostr() *match.Card {
 							return
 						}
 
-						creatures := card.Player().Filter(
+						cards = card.Player().Filter(
 							cards,
 							fmt.Sprintf("Select 1 %s", family.Beast),
 							1,
@@ -90,12 +91,12 @@ func Krostr() *match.Card {
 							func(x *match.Card) bool { return x.Family() == family.Beast },
 						)
 
-						for _, c := range creatures {
+						for _, c := range cards {
 							if err := c.MoveCard(match.HAND); err != nil {
 								logrus.Debug(err)
 								return
 							}
-							ctx.Match.Chat("Server", fmt.Sprintf("%s was moved from %s's deck to their hand", c.Name(), card.Player().Name()))
+							ctx.Match().Chat("Server", fmt.Sprintf("%s was moved from %s's deck to their hand", c.Name(), card.Player().Name()))
 						}
 
 						card.Player().ShuffleDeck()

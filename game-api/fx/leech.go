@@ -5,7 +5,7 @@ import "github.com/jyotiskaghosh/ganjifa/game-api/match"
 // Leech ...
 func Leech(card *match.Card, ctx *match.Context) {
 
-	switch event := ctx.Event.(type) {
+	switch event := ctx.Event().(type) {
 
 	case *match.DamageEvent:
 		if event.Source == card {

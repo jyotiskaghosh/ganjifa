@@ -11,7 +11,7 @@ import (
 // Creature has default behaviours for creatures
 func Creature(card *match.Card, ctx *match.Context) {
 
-	switch event := ctx.Event.(type) {
+	switch event := ctx.Event().(type) {
 
 	// Untap the card
 	case *match.UntapStep:
@@ -23,7 +23,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 
 	// On playing the card
 	case *match.PlayCardEvent:
-		if event.ID == card.ID {
+		if event.ID == card.ID() {
 
 			if card.GetRank(ctx) > 0 {
 
@@ -47,7 +47,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 						logrus.Debug(err)
 						return
 					}
-					ctx.Match.Chat("Server", fmt.Sprintf("%s summoned %s to the battle zone", card.Player().Name(), card.Name()))
+					ctx.Match().Chat("Server", fmt.Sprintf("%s summoned %s to the battle zone", card.Player().Name(), card.Name()))
 
 					card.AddCondition(CantEvolve)
 				})
@@ -55,34 +55,23 @@ func Creature(card *match.Card, ctx *match.Context) {
 		}
 
 	// On evolve
-	case *match.Evolve:
-		if event.ID == card.ID {
+	case *match.EvolveEvent:
+		if event.ID == card.ID() {
 
 			// Do this last in case any other cards want to interrupt the flow
 			ctx.Override(func() {
 
-				if err := card.MoveCard(match.BATTLEZONE); err != nil {
-					logrus.Debug(err)
-					return
-				}
+				match.Evolve(card, event.Creature)
 
-				ctx.Match.Chat("Server", fmt.Sprintf("%s summoned %s to the battle zone", card.Player().Name(), card.Name()))
-
-				card.Tap(event.Creature.Tapped())
-
-				event.Creature.AttachTo(card)
-
-				card.AddCondition(event.Creature.Conditions()...)
 				card.AddCondition(CantEvolve)
 
-				// This is done to maintain a single identity for a creature
-				card.ID, event.Creature.ID = event.Creature.ID, card.ID
+				ctx.Match().Chat("Server", fmt.Sprintf("%s summoned %s to the battle zone", card.Player().Name(), card.Name()))
 			})
 		}
 
 	// Attack the player
 	case *match.AttackPlayer:
-		if event.ID == card.ID {
+		if event.ID == card.ID() {
 
 			if card.Tapped() || card.Zone() != match.BATTLEZONE || card.GetAttack(ctx) <= 0 {
 				ctx.InterruptFlow()
@@ -92,14 +81,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 			// Do this last in case any other cards want to interrupt the flow
 			ctx.Override(func() {
 
-				opponent := ctx.Match.Opponent(card.Player())
-
-				hiddenzone, err := ctx.Match.Opponent(card.Player()).Container(match.HIDDENZONE)
-				if err != nil {
-					ctx.InterruptFlow()
-					logrus.Debug(err)
-					return
-				}
+				opponent := ctx.Match().Opponent(card.Player())
 
 				blockers := make([]*match.Card, 0)
 				for _, c := range opponent.GetCreatures() {
@@ -108,17 +90,25 @@ func Creature(card *match.Card, ctx *match.Context) {
 					}
 				}
 
-				defer card.Tap(true)
+				hiddenzone, err := ctx.Match().Opponent(card.Player()).Container(match.HIDDENZONE)
+				if err != nil {
+					logrus.Debug(err)
+					return
+				}
 
-				ctx.Match.NewAction(opponent, append(blockers, hiddenzone...), 1, 1, fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), opponent.Name()), true)
-				defer ctx.Match.CloseAction(opponent)
+				defer func() {
+					card.Tap(true)
+				}()
+
+				ctx.Match().NewAction(opponent, append(blockers, hiddenzone...), 1, 1, fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), opponent.Name()), true)
+				defer ctx.Match().CloseAction(opponent)
 
 				for {
 					select {
 					case action := <-opponent.Action:
 						{
 							if len(action) < 1 || len(action) > 1 || !match.AssertCardsIn(append(blockers, hiddenzone...), action) {
-								ctx.Match.WarnPlayer(opponent, "The cards you selected does not meet the requirements")
+								ctx.Match().WarnPlayer(opponent, "The cards you selected does not meet the requirements")
 								continue
 							}
 
@@ -127,41 +117,55 @@ func Creature(card *match.Card, ctx *match.Context) {
 								c, err := opponent.GetCard(id)
 								if err != nil {
 									logrus.Debug(err)
+									return
 								}
 
 								if c.Zone() == match.HIDDENZONE {
 
 									// Playing set down card
-									ctx.Match.HandleFx(match.NewContext(ctx.Match, &match.React{
-										ID:    c.ID,
-										Event: ctx.Event,
+									ctx.Match().HandleFx(match.NewContext(ctx.Match(), &match.React{
+										ID:    c.ID(),
+										Event: ctx.Event(),
 									}))
-									ctx.Match.BroadcastState()
+									ctx.Match().BroadcastState()
 
 									// Check if attack can still go through
-									ctx.Match.ResolveEvent(ctx)
+									ctx.Match().ResolveEvent(ctx)
 									if ctx.Cancelled() {
 										return
 									}
 
-									hiddenzone, err := ctx.Match.Opponent(card.Player()).Container(match.HIDDENZONE)
+									// Update card
+									card, err = card.Player().GetCard(event.ID)
 									if err != nil {
-										ctx.InterruptFlow()
 										logrus.Debug(err)
 										return
 									}
 
-									ctx.Match.NewAction(opponent, append(blockers, hiddenzone...), 1, 1, fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), opponent.Name()), true)
+									blockers = make([]*match.Card, 0)
+									for _, c := range opponent.GetCreatures() {
+										if !c.Tapped() {
+											blockers = append(blockers, c)
+										}
+									}
+
+									hiddenzone, err := ctx.Match().Opponent(card.Player()).Container(match.HIDDENZONE)
+									if err != nil {
+										logrus.Debug(err)
+										return
+									}
+
+									ctx.Match().NewAction(opponent, append(blockers, hiddenzone...), 1, 1, fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), opponent.Name()), true)
 
 								} else {
 
 									// Blocking attack
-									blockCtx := match.NewContext(ctx.Match, &match.Block{
+									blockCtx := match.NewContext(ctx.Match(), &match.Block{
 										Attacker: card,
 										Blocker:  c,
 									})
 
-									ctx.Match.HandleFx(blockCtx)
+									ctx.Match().HandleFx(blockCtx)
 									if blockCtx.Cancelled() {
 										continue
 									}
@@ -183,37 +187,29 @@ func Creature(card *match.Card, ctx *match.Context) {
 
 	// Attack a creature
 	case *match.AttackCreature:
-		if event.ID == card.ID {
+		if event.ID == card.ID() {
 
 			if card.Tapped() || card.Zone() != match.BATTLEZONE || card.GetAttack(ctx) <= 0 {
 				ctx.InterruptFlow()
 				return
 			}
 
-			opponent := ctx.Match.Opponent(card.Player())
+			opponent := ctx.Match().Opponent(card.Player())
 
-			defender, err := opponent.GetCard(event.TargetID)
+			target, err := opponent.GetCard(event.TargetID)
 			if err != nil {
-				ctx.Match.WarnPlayer(card.Player(), "creature to attack was not found")
 				ctx.InterruptFlow()
+				logrus.Debug(err)
 				return
 			}
 
-			if defender.Zone() != match.BATTLEZONE {
-				ctx.Match.WarnPlayer(card.Player(), "creature to attack is not in battlezone")
+			if target.Zone() != match.BATTLEZONE {
 				ctx.InterruptFlow()
 				return
 			}
 
 			// Do this last in case any other cards want to interrupt the flow
 			ctx.Override(func() {
-
-				hiddenzone, err := ctx.Match.Opponent(card.Player()).Container(match.HIDDENZONE)
-				if err != nil {
-					ctx.InterruptFlow()
-					logrus.Debug(err)
-					return
-				}
 
 				blockers := make([]*match.Card, 0)
 				for _, c := range opponent.GetCreatures() {
@@ -222,17 +218,25 @@ func Creature(card *match.Card, ctx *match.Context) {
 					}
 				}
 
-				defer card.Tap(true)
+				hiddenzone, err := ctx.Match().Opponent(card.Player()).Container(match.HIDDENZONE)
+				if err != nil {
+					logrus.Debug(err)
+					return
+				}
 
-				ctx.Match.NewAction(opponent, append(blockers, hiddenzone...), 1, 1, fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), defender.Name()), true)
-				defer ctx.Match.CloseAction(opponent)
+				defer func() {
+					card.Tap(true)
+				}()
+
+				ctx.Match().NewAction(opponent, append(blockers, hiddenzone...), 1, 1, fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), target.Name()), true)
+				defer ctx.Match().CloseAction(opponent)
 
 				for {
 					select {
 					case action := <-opponent.Action:
 						{
 							if len(action) < 1 || len(action) > 1 || !match.AssertCardsIn(append(blockers, hiddenzone...), action) {
-								ctx.Match.WarnPlayer(opponent, "The cards you selected does not meet the requirements")
+								ctx.Match().WarnPlayer(opponent, "The cards you selected does not meet the requirements")
 								continue
 							}
 
@@ -241,49 +245,62 @@ func Creature(card *match.Card, ctx *match.Context) {
 								c, err := opponent.GetCard(id)
 								if err != nil {
 									logrus.Debug(err)
+									return
 								}
 
 								if c.Zone() == match.HIDDENZONE {
 
 									// Playing set down card
-									ctx.Match.HandleFx(match.NewContext(ctx.Match, &match.React{
-										ID:    c.ID,
-										Event: ctx.Event,
+									ctx.Match().HandleFx(match.NewContext(ctx.Match(), &match.React{
+										ID:    c.ID(),
+										Event: ctx.Event(),
 									}))
-									ctx.Match.BroadcastState()
+									ctx.Match().BroadcastState()
 
 									// Check if attack can still go through
-									ctx.Match.ResolveEvent(ctx)
+									ctx.Match().ResolveEvent(ctx)
 									if ctx.Cancelled() {
 										return
 									}
 
-									// This is done in case the target evolves
-									defender, err = opponent.GetCard(event.TargetID)
+									// Update card
+									card, err = card.Player().GetCard(event.ID)
 									if err != nil {
-										ctx.Match.WarnPlayer(card.Player(), "creature to attack was not found")
-										ctx.InterruptFlow()
-										return
-									}
-
-									hiddenzone, err := ctx.Match.Opponent(card.Player()).Container(match.HIDDENZONE)
-									if err != nil {
-										ctx.InterruptFlow()
 										logrus.Debug(err)
 										return
 									}
 
-									ctx.Match.NewAction(opponent, append(blockers, hiddenzone...), 1, 1, fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), defender.Name()), true)
+									// Update target
+									target, err = opponent.GetCard(event.TargetID)
+									if err != nil {
+										logrus.Debug(err)
+										return
+									}
+
+									blockers = make([]*match.Card, 0)
+									for _, c := range opponent.GetCreatures() {
+										if !c.Tapped() {
+											blockers = append(blockers, c)
+										}
+									}
+
+									hiddenzone, err := ctx.Match().Opponent(card.Player()).Container(match.HIDDENZONE)
+									if err != nil {
+										logrus.Debug(err)
+										return
+									}
+
+									ctx.Match().NewAction(opponent, append(blockers, hiddenzone...), 1, 1, fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), target.Name()), true)
 
 								} else {
 
 									// Blocking attack
-									blockCtx := match.NewContext(ctx.Match, &match.Block{
+									blockCtx := match.NewContext(ctx.Match(), &match.Block{
 										Attacker: card,
 										Blocker:  c,
 									})
 
-									ctx.Match.HandleFx(blockCtx)
+									ctx.Match().HandleFx(blockCtx)
 									if blockCtx.Cancelled() {
 										continue
 									}
@@ -296,7 +313,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 					case cancel := <-opponent.Cancel:
 						if cancel {
 
-							ctx.Match.Battle(card, defender, false)
+							ctx.Match().Battle(card, target, false)
 							return
 						}
 					}
@@ -309,7 +326,6 @@ func Creature(card *match.Card, ctx *match.Context) {
 		if event.Blocker == card {
 
 			if card.Tapped() || card.Zone() != match.BATTLEZONE || card.GetDefence(ctx) <= 0 {
-				ctx.Match.WarnPlayer(card.Player(), fmt.Sprintf("%s can't block", card.Name()))
 				ctx.InterruptFlow()
 				return
 			}
@@ -319,7 +335,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 
 				defer event.Blocker.Tap(true)
 
-				ctx.Match.Battle(event.Attacker, card, true)
+				ctx.Match().Battle(event.Attacker, card, true)
 			})
 		}
 

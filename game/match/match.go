@@ -37,16 +37,33 @@ var lobbyMatches = make(chan server.MatchesListMessage)
 
 // Match struct
 type Match struct {
+	id        string
+	matchName string
+	host      string
+	visible   bool
+
+	match *match.Match
+
+	created int64
+	ending  bool
+}
+
+// Info struct
+type Info struct {
 	ID        string `json:"id"`
 	MatchName string `json:"name"`
 	Host      string `json:"host"`
 	Visible   bool   `json:"visible"`
+}
 
-	Match *match.Match `json:"-"`
-
-	created int64
-
-	ending bool
+// Info returns match information in MatchInfo struct
+func (m *Match) Info() Info {
+	return Info{
+		ID:        m.id,
+		MatchName: m.matchName,
+		Host:      m.host,
+		Visible:   m.visible,
+	}
 }
 
 // Matches returns a list of the current matches
@@ -70,11 +87,11 @@ func New(matchName string, host string, visible bool) *Match {
 	}
 
 	m := &Match{
-		ID:        id,
-		MatchName: matchName,
-		Host:      host,
-		Visible:   visible,
-		Match:     match.New(),
+		id:        id,
+		matchName: matchName,
+		host:      host,
+		visible:   visible,
+		match:     match.New(),
 
 		created: time.Now().Unix(),
 	}
@@ -115,14 +132,14 @@ func UpdateMatchList() {
 
 	for _, match := range matches {
 
-		if !match.Visible {
+		if !match.visible {
 			continue
 		}
 
 		matchesMessage = append(matchesMessage, server.MatchMessage{
-			ID:   match.ID,
-			Host: match.Host,
-			Name: match.MatchName,
+			ID:   match.id,
+			Host: match.host,
+			Name: match.matchName,
 		})
 	}
 
@@ -151,9 +168,9 @@ func (m *Match) startTicker() {
 
 		select {
 
-		case <-m.Match.Quit:
+		case <-m.match.Quit:
 			{
-				logrus.Debugf("Closing match %s", m.ID)
+				logrus.Debugf("Closing match %s", m.id)
 				m.ending = true
 				return
 			}
@@ -162,8 +179,8 @@ func (m *Match) startTicker() {
 			{
 
 				// Close the match if it was not started within 10 minutes of creation
-				if !m.Match.Started() && m.created < time.Now().Unix()-60*10 {
-					logrus.Debugf("Closing match %s", m.ID)
+				if !m.match.Started() && m.created < time.Now().Unix()-60*10 {
+					logrus.Debugf("Closing match %s", m.id)
 					return
 				}
 			}
@@ -174,7 +191,7 @@ func (m *Match) startTicker() {
 // Dispose closes the match, disconnects the clients and removes all references to it
 func (m *Match) Dispose() {
 
-	logrus.Debugf("Disposing match %s", m.ID)
+	logrus.Debugf("Disposing match %s", m.id)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -182,19 +199,19 @@ func (m *Match) Dispose() {
 		}
 	}()
 
-	for _, s := range server.SocketsInHub(m.ID) {
+	for _, s := range server.SocketsInHub(m.id) {
 		s.Close()
 	}
 
 	matchesMutex.Lock()
 
-	close(m.Match.Quit)
+	close(m.match.Quit)
 
-	delete(matches, m.ID)
+	delete(matches, m.id)
 
 	matchesMutex.Unlock()
 
-	logrus.Debugf("Closed match with id %s", m.ID)
+	logrus.Debugf("Closed match with id %s", m.id)
 
 	UpdateMatchList()
 
@@ -239,7 +256,7 @@ func (m *Match) Parse(s *server.Socket, data []byte) {
 
 	case "join_match":
 		{
-			if _, err := m.Match.AddPlayer(s); err != nil {
+			if _, err := m.match.AddPlayer(s); err != nil {
 				s.Write(match.ChatMessage{
 					Header:  "warn",
 					Message: err.Error(),
@@ -300,16 +317,16 @@ func (m *Match) Parse(s *server.Socket, data []byte) {
 				return
 			}
 
-			m.Match.Chat(s.User.Username, msg.Message)
+			m.match.Chat(s.User.Username, msg.Message)
 		}
 
 	default:
 		{
-			pr, err := m.Match.PlayerForWriter(s)
+			pr, err := m.match.PlayerForWriter(s)
 			if err != nil {
 				return
 			}
-			m.Match.Parse(pr, data)
+			m.match.Parse(pr, data)
 		}
 	}
 }
@@ -317,10 +334,10 @@ func (m *Match) Parse(s *server.Socket, data []byte) {
 // OnSocketClose is called when a socket disconnects
 func (m *Match) OnSocketClose(s *server.Socket) {
 
-	if pr, err := m.Match.PlayerForWriter(s); err == nil {
+	if pr, err := m.match.PlayerForWriter(s); err == nil {
 
 		match.Warn(pr, "Your opponent disconnected, the match will close soon.")
 
-		m.Match.End(m.Match.Opponent(pr.Player), "opponent disconnected")
+		m.match.End(m.match.Opponent(pr.Player), "opponent disconnected")
 	}
 }

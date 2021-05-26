@@ -80,7 +80,7 @@ func Sastravikrayin() *match.Card {
 							return
 						}
 
-						creatures := card.Player().Filter(
+						cards = card.Player().Filter(
 							cards,
 							fmt.Sprintf("Select 1 %s", family.Equipment),
 							1,
@@ -89,12 +89,12 @@ func Sastravikrayin() *match.Card {
 							func(x *match.Card) bool { return x.Family() == family.Equipment },
 						)
 
-						for _, c := range creatures {
+						for _, c := range cards {
 							if err := c.MoveCard(match.HAND); err != nil {
 								logrus.Debug(err)
 								return
 							}
-							ctx.Match.Chat("Server", fmt.Sprintf("%s was moved from %s's deck to their hand", c.Name(), card.Player().Name()))
+							ctx.Match().Chat("Server", fmt.Sprintf("%s was moved from %s's deck to their hand", c.Name(), card.Player().Name()))
 						}
 
 						card.Player().ShuffleDeck()
@@ -125,7 +125,7 @@ func Astrakara() *match.Card {
 					return
 				}
 
-				if event, ok := ctx.Event.(*match.GetRankEvent); ok && event.Card.Player() == card.Player() {
+				if event, ok := ctx.Event().(*match.GetRankEvent); ok && event.Card.Player() == card.Player() {
 
 					if event.Card.Family() == family.Equipment {
 						if event.Rank > 0 {

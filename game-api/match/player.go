@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
-	"sync"
 
 	"github.com/sirupsen/logrus"
 )
@@ -52,8 +51,6 @@ type Player struct {
 	soul       []*Card
 	life       int
 
-	mutex *sync.Mutex
-
 	ready bool
 
 	turn   bool
@@ -76,7 +73,6 @@ func newPlayer(match *Match, turn bool) *Player {
 		hiddenzone: make([]*Card, 0),
 		soul:       make([]*Card, 0),
 		life:       LIFE,
-		mutex:      &sync.Mutex{},
 		Action:     make(chan []string),
 		Cancel:     make(chan bool),
 		turn:       turn,
@@ -150,7 +146,7 @@ func (p *Player) Container(c Container) ([]*Card, error) {
 }
 
 // MapContainer performs the given action on all cards in the specified container
-func (p *Player) MapContainer(containerName Container, fnc func(*Card)) {
+func (p *Player) MapContainer(containerName Container, fn func(*Card)) {
 
 	cards, err := p.Container(containerName)
 	if err != nil {
@@ -159,15 +155,12 @@ func (p *Player) MapContainer(containerName Container, fnc func(*Card)) {
 	}
 
 	for _, card := range cards {
-		fnc(card)
+		fn(card)
 	}
 }
 
 // createDeck initializes a new deck from a list of card ids
 func (p *Player) createDeck(cards []int) error {
-
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
 
 	deck := make([]*Card, 0)
 
@@ -202,10 +195,6 @@ func (p *Player) createDeck(cards []int) error {
 
 // ShuffleDeck randomizes the order of cards in the players deck
 func (p *Player) ShuffleDeck() {
-
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
 	rand.Shuffle(len(p.deck), func(i, j int) { p.deck[i], p.deck[j] = p.deck[j], p.deck[i] })
 	p.match.Chat("Server", fmt.Sprintf("%s's deck was shuffled", p.Name()))
 }
@@ -214,9 +203,6 @@ func (p *Player) ShuffleDeck() {
 func (p *Player) PeekDeck(n int) []*Card {
 
 	result := make([]*Card, 0)
-
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
 
 	if len(p.deck) < n {
 		n = len(p.deck)
@@ -261,7 +247,7 @@ func (p *Player) HasCard(container Container, id string) bool {
 	}
 
 	for _, card := range c {
-		if card.ID == id {
+		if card.id == id {
 			return true
 		}
 	}
@@ -273,7 +259,7 @@ func (p *Player) HasCard(container Container, id string) bool {
 func (p *Player) GetCard(id string) (*Card, error) {
 
 	for _, card := range p.match.collectCards() {
-		if card.ID == id {
+		if card.id == id {
 			return card, nil
 		}
 	}
@@ -288,32 +274,30 @@ func (p *Player) Damage(source *Card, ctx *Context, health int) {
 		return
 	}
 
-	ctx = NewContext(ctx.Match,
+	ctx = NewContext(ctx.match,
 		&DamageEvent{
 			Player: p,
 			Source: source,
-			Event:  ctx.Event,
+			Event:  ctx.event,
 			Health: health,
 		})
 
 	ctx.Override(func() {
-		if event, ok := ctx.Event.(*DamageEvent); ok {
-			p.mutex.Lock()
+		if event, ok := ctx.event.(*DamageEvent); ok {
 			p.life -= event.Health
-			p.mutex.Unlock()
 		}
 	})
 
 	ctx.ScheduleAfter(func() {
-		ctx.Match.Chat("Server", fmt.Sprintf("%s did %d damage to %s", source.name, health, p.Name()))
+		ctx.match.Chat("Server", fmt.Sprintf("%s did %d damage to %s", source.name, health, p.Name()))
 	})
 
-	ctx.Match.HandleFx(ctx)
+	ctx.match.HandleFx(ctx)
 
-	ctx.Match.BroadcastState()
+	ctx.match.BroadcastState()
 
 	if p.life <= 0 {
-		ctx.Match.End(p.match.Opponent(p), fmt.Sprintf("%s has no life left", p.Name()))
+		ctx.match.End(p.match.Opponent(p), fmt.Sprintf("%s has no life left", p.Name()))
 	}
 }
 
@@ -324,7 +308,7 @@ func (p *Player) Heal(source *Card, ctx *Context, health int) {
 		return
 	}
 
-	ctx = NewContext(ctx.Match,
+	ctx = NewContext(ctx.match,
 		&HealEvent{
 			Player: p,
 			Source: source,
@@ -332,27 +316,22 @@ func (p *Player) Heal(source *Card, ctx *Context, health int) {
 		})
 
 	ctx.Override(func() {
-		if event, ok := ctx.Event.(*HealEvent); ok {
-			p.mutex.Lock()
+		if event, ok := ctx.event.(*HealEvent); ok {
 			p.life += event.Health
-			p.mutex.Unlock()
 		}
 	})
 
 	ctx.ScheduleAfter(func() {
-		ctx.Match.Chat("Server", fmt.Sprintf("%s healed %d life for %s", source.name, health, p.Name()))
+		ctx.match.Chat("Server", fmt.Sprintf("%s healed %d life for %s", source.name, health, p.Name()))
 	})
 
-	ctx.Match.HandleFx(ctx)
+	ctx.match.HandleFx(ctx)
 
-	ctx.Match.BroadcastState()
+	ctx.match.BroadcastState()
 }
 
 // denormalized returns a server.PlayerState
 func (p *Player) denormalized() PlayerState {
-
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
 
 	state := PlayerState{
 		Life:       p.life,
@@ -374,7 +353,7 @@ func denormalizeCards(cards []*Card) []CardState {
 	for _, card := range cards {
 
 		cs := CardState{
-			ID:            card.ID,
+			ID:            card.id,
 			UID:           card.cardID,
 			Name:          card.name,
 			Civ:           card.civ,

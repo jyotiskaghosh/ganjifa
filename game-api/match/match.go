@@ -28,6 +28,7 @@ func New() *Match {
 
 	m := &Match{
 		mutex: &sync.Mutex{},
+		wait:  true,
 		Quit:  make(chan bool),
 	}
 
@@ -240,10 +241,10 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 			}
 
 			m := make(map[string]bool)
-
 			for _, card := range msg.Cards {
 				m[card] = true
 			}
+
 			var cards []string
 			for card := range m {
 				cards = append(cards, card)
@@ -314,15 +315,15 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
-			creatures := pr.Player.Search(
+			cards := pr.Player.Search(
 				m.Opponent(pr.Player).GetCreatures(),
 				"Select 1 of your opponent's creature to attack",
 				1,
 				1,
 				false)
 
-			for _, c := range creatures {
-				m.AttackCreature(pr, msg.ID, c.ID)
+			for _, c := range cards {
+				m.AttackCreature(pr, msg.ID, c.id)
 			}
 		}
 
@@ -449,7 +450,6 @@ func (m *Match) collectCards() []*Card {
 	cards := make([]*Card, 0)
 
 	for _, p := range players {
-
 		cards = append(cards, p.Player.battlezone...)
 		cards = append(cards, p.Player.soul...)
 		cards = append(cards, p.Player.hiddenzone...)
@@ -496,7 +496,6 @@ func (m *Match) HandleFx(ctx *Context) {
 	}
 
 	if ctx.mainFx != nil {
-
 		ctx.mainFx()
 	}
 
@@ -505,7 +504,6 @@ func (m *Match) HandleFx(ctx *Context) {
 	}
 
 	for _, h := range ctx.postFxs {
-
 		h()
 	}
 }
@@ -595,18 +593,14 @@ func (m *Match) ShowCards(p *Player, message string, cards []string) {
 
 // changeCurrentPlayer changes the current player
 func (m *Match) changeCurrentPlayer() {
-
-	m.player1.Player.mutex.Lock()
 	m.player1.Player.turn = !m.player1.Player.turn
-	m.player1.Player.mutex.Unlock()
-
-	m.player2.Player.mutex.Lock()
 	m.player2.Player.turn = !m.player2.Player.turn
-	m.player2.Player.mutex.Unlock()
 }
 
 // start starts the match
 func (m *Match) start() {
+
+	defer m.waiting(false)
 
 	m.mutex.Lock()
 	defer m.mutex.Unlock()

@@ -2,7 +2,6 @@ package match
 
 import (
 	"reflect"
-	"sync"
 
 	"github.com/jyotiskaghosh/ganjifa/game-api/civ"
 
@@ -12,7 +11,7 @@ import (
 
 // Card stores card data
 type Card struct {
-	ID string
+	id string
 
 	cardID   int
 	name     string
@@ -29,7 +28,6 @@ type Card struct {
 	conditions []HandlerFunc // Temporary handlers
 
 	player *Player
-	mutex  *sync.Mutex
 }
 
 // CardBuilder is a builder for Card
@@ -71,13 +69,22 @@ func NewCard(p *Player, cardID int) (*Card, error) {
 		return nil, err
 	}
 
-	c.ID = id
+	c.id = id
 	c.cardID = cardID
 	c.player = p
 	c.zone = DECK
-	c.mutex = &sync.Mutex{}
 
 	return c, nil
+}
+
+// ID ...
+func (c *Card) ID() string {
+	return c.id
+}
+
+// CardID ...
+func (c *Card) CardID() int {
+	return c.cardID
 }
 
 // Name ...
@@ -122,10 +129,6 @@ func (c *Card) Player() *Player {
 
 // Tap taps or untaps based on the bool value passed
 func (c *Card) Tap(tap bool) {
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	c.tapped = tap
 }
 
@@ -141,10 +144,6 @@ func (c *Card) Conditions() []HandlerFunc {
 
 // AddCondition adds temporary handler functions
 func (c *Card) AddCondition(handlers ...HandlerFunc) {
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	c.conditions = append(c.conditions, handlers...)
 }
 
@@ -163,13 +162,9 @@ func (c *Card) HasCondition(handler HandlerFunc) bool {
 // RemoveCondition removes all instances of the given handler from the cards conditions
 func (c *Card) RemoveCondition(handler HandlerFunc) {
 
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	tmp := make([]HandlerFunc, 0)
 
 	for _, condition := range c.conditions {
-
 		if reflect.ValueOf(condition).Pointer() != reflect.ValueOf(handler).Pointer() {
 			tmp = append(tmp, condition)
 		}
@@ -180,10 +175,6 @@ func (c *Card) RemoveCondition(handler HandlerFunc) {
 
 // ClearConditions removes all conditions from the card
 func (c *Card) ClearConditions() {
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-
 	c.conditions = make([]HandlerFunc, 0)
 }
 
@@ -215,12 +206,9 @@ func (c *Card) Attachments() []*Card {
 // AttachTo attaches c to card
 func (c *Card) AttachTo(card *Card) {
 
-	if card.zone != BATTLEZONE || c == card {
+	if c.player != card.player || card.zone != BATTLEZONE || c == card {
 		return
 	}
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 
 	c.attachedTo = card
 	if err := c.MoveCard(SOUL); err != nil {
@@ -248,13 +236,10 @@ func (c *Card) MoveCard(destination Container) error {
 		return err
 	}
 
-	c.player.mutex.Lock()
-	defer c.player.mutex.Unlock()
-
 	temp := make([]*Card, 0)
 
 	for _, card := range *from {
-		if card.ID != c.ID {
+		if card.id != c.id {
 			temp = append(temp, card)
 		}
 	}
@@ -271,7 +256,7 @@ func (c *Card) MoveCard(destination Container) error {
 	}
 
 	c.player.match.HandleFx(NewContext(c.player.match, &CardMoved{
-		ID:   c.ID,
+		ID:   c.id,
 		From: f,
 		To:   destination,
 	}))
@@ -281,7 +266,7 @@ func (c *Card) MoveCard(destination Container) error {
 		card.attachedTo = c.attachedTo
 
 		card.player.match.HandleFx(NewContext(card.player.match, &CardMoved{
-			ID:   card.ID,
+			ID:   card.id,
 			From: card.zone,
 			To:   destination,
 		}))
@@ -295,10 +280,10 @@ func (c *Card) GetRank(ctx *Context) int {
 
 	e := &GetRankEvent{
 		Card:  c,
-		Event: ctx.Event,
+		Event: ctx.event,
 		Rank:  c.rank,
 	}
-	ctx.Match.HandleFx(NewContext(ctx.Match, e))
+	ctx.match.HandleFx(NewContext(ctx.match, e))
 
 	return e.Rank
 }
@@ -308,10 +293,10 @@ func (c *Card) GetCivilisation(ctx *Context) map[civ.Civilisation]bool {
 
 	e := &GetCivilisationEvent{
 		Card:  c,
-		Event: ctx.Event,
+		Event: ctx.event,
 		Civ:   map[civ.Civilisation]bool{c.civ: true},
 	}
-	ctx.Match.HandleFx(NewContext(ctx.Match, e))
+	ctx.match.HandleFx(NewContext(ctx.match, e))
 
 	return e.Civ
 }
@@ -321,10 +306,10 @@ func (c *Card) GetFamily(ctx *Context) map[string]bool {
 
 	e := &GetFamilyEvent{
 		Card:   c,
-		Event:  ctx.Event,
+		Event:  ctx.event,
 		Family: map[string]bool{c.family: true},
 	}
-	ctx.Match.HandleFx(NewContext(ctx.Match, e))
+	ctx.match.HandleFx(NewContext(ctx.match, e))
 
 	return e.Family
 }
@@ -334,10 +319,10 @@ func (c *Card) GetAttack(ctx *Context) int {
 
 	e := &GetAttackEvent{
 		Card:   c,
-		Event:  ctx.Event,
+		Event:  ctx.event,
 		Attack: c.attack,
 	}
-	ctx.Match.HandleFx(NewContext(ctx.Match, e))
+	ctx.match.HandleFx(NewContext(ctx.match, e))
 
 	return e.Attack
 }
@@ -347,10 +332,10 @@ func (c *Card) GetDefence(ctx *Context) int {
 
 	e := &GetDefenceEvent{
 		Card:    c,
-		Event:   ctx.Event,
+		Event:   ctx.event,
 		Defence: c.defence,
 	}
-	ctx.Match.HandleFx(NewContext(ctx.Match, e))
+	ctx.match.HandleFx(NewContext(ctx.match, e))
 
 	return e.Defence
 }

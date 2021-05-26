@@ -164,7 +164,7 @@ func MatchHandler(c *gin.Context) {
 
 	m := match.New(reqBody.Name, user.Username, visible)
 
-	c.JSON(200, m)
+	c.JSON(200, m.Info())
 
 }
 

@@ -20,8 +20,8 @@ type CardMoved struct {
 	To   Container
 }
 
-// Evolve is fired when a creature is evolving
-type Evolve struct {
+// EvolveEvent is fired when a creature is evolving
+type EvolveEvent struct {
 	ID       string
 	Creature *Card
 }

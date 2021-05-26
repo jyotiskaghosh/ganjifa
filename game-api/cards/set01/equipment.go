@@ -100,7 +100,7 @@ func ScopeLens() *match.Card {
 			fx.Equipment,
 			func(card *match.Card, ctx *match.Context) {
 
-				if event, ok := ctx.Event.(*match.GetAttackEvent); ok && event.Card == card.AttachedTo() {
+				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.Card == card.AttachedTo() {
 
 					if _, ok := event.Event.(*match.AttackPlayer); ok {
 						event.Attack += 200

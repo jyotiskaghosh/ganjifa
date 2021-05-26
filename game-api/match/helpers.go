@@ -1,6 +1,8 @@
 package match
 
 import (
+	"fmt"
+
 	"github.com/jyotiskaghosh/ganjifa/game-api/civ"
 	"github.com/jyotiskaghosh/ganjifa/game-api/family"
 
@@ -70,7 +72,7 @@ func AssertCardsIn(src []*Card, test []string) bool {
 		ok := false
 
 		for _, card := range src {
-			if card.ID == toTest {
+			if card.id == toTest {
 				ok = true
 			}
 		}
@@ -86,15 +88,15 @@ func AssertCardsIn(src []*Card, test []string) bool {
 // AmIPlayed returns true or false based on if the card is played
 func AmIPlayed(card *Card, ctx *Context) bool {
 
-	event, ok := ctx.Event.(*PlayCardEvent)
+	event, ok := ctx.event.(*PlayCardEvent)
 
-	return ok && event.ID == card.ID
+	return ok && event.ID == card.id
 }
 
 // Evolution handles evolution
 func Evolution(card *Card, ctx *Context, text string, filter func(*Card) bool) {
 
-	creatures := card.player.Filter(
+	cards := card.player.Filter(
 		card.player.battlezone,
 		text,
 		1,
@@ -103,17 +105,17 @@ func Evolution(card *Card, ctx *Context, text string, filter func(*Card) bool) {
 		filter,
 	)
 
-	if len(creatures) < 1 {
+	if len(cards) < 1 {
 		ctx.InterruptFlow()
 		return
 	}
 
-	evoCtx := NewContext(ctx.Match, &Evolve{
-		ID:       card.ID,
-		Creature: creatures[0],
+	evoCtx := NewContext(ctx.match, &EvolveEvent{
+		ID:       card.id,
+		Creature: cards[0],
 	})
 
-	ctx.Match.HandleFx(evoCtx)
+	ctx.match.HandleFx(evoCtx)
 
 	if evoCtx.Cancelled() {
 		ctx.InterruptFlow()
@@ -123,7 +125,7 @@ func Evolution(card *Card, ctx *Context, text string, filter func(*Card) bool) {
 // Equipment handles equiping
 func Equipment(card *Card, ctx *Context, text string, filter func(*Card) bool) {
 
-	creatures := card.player.Filter(
+	cards := card.player.Filter(
 		card.player.battlezone,
 		text,
 		1,
@@ -132,17 +134,17 @@ func Equipment(card *Card, ctx *Context, text string, filter func(*Card) bool) {
 		filter,
 	)
 
-	if len(creatures) < 1 {
+	if len(cards) < 1 {
 		ctx.InterruptFlow()
 		return
 	}
 
-	equipCtx := NewContext(ctx.Match, &Equip{
-		ID:       card.ID,
-		Creature: creatures[0],
+	equipCtx := NewContext(ctx.match, &Equip{
+		ID:       card.id,
+		Creature: cards[0],
 	})
 
-	ctx.Match.HandleFx(equipCtx)
+	ctx.match.HandleFx(equipCtx)
 
 	if equipCtx.Cancelled() {
 		ctx.InterruptFlow()
@@ -193,4 +195,55 @@ func (c *Card) HasCivilisation(civilisation civ.Civilisation, ctx *Context) bool
 		}
 	}
 	return false
+}
+
+// Evolve ...
+func Evolve(card *Card, target *Card) {
+
+	if err := card.MoveCard(BATTLEZONE); err != nil {
+		logrus.Debug(err)
+		return
+	}
+
+	card.tapped = target.tapped
+
+	target.AttachTo(card)
+
+	// This is done to maintain a single identity for a creature
+	card.id, target.id = target.id, card.id
+	card.conditions, target.conditions = target.conditions, card.conditions
+}
+
+// Devolve ...
+func Devolve(card *Card, source *Card) {
+
+	cards := card.player.Filter(
+		card.Attachments(),
+		"Select a card",
+		1,
+		1,
+		false,
+		func(x *Card) bool { return x.Family() != family.Equipment })
+
+	if len(cards) < 1 {
+		card.player.match.Destroy(card, source, fmt.Sprintf("%s was destroyed by %s", card.name, source.name))
+		return
+	}
+
+	if err := cards[0].MoveCard(BATTLEZONE); err != nil {
+		logrus.Debug(err)
+		return
+	}
+
+	cards[0].tapped = card.tapped
+
+	for _, c := range card.Attachments() {
+		c.AttachTo(cards[0])
+	}
+
+	// This is done to maintain a single identity for a creature
+	card.id, cards[0].id = cards[0].id, card.id
+	card.conditions, cards[0].conditions = cards[0].conditions, card.conditions
+
+	card.player.match.Destroy(card, source, fmt.Sprintf("%s was destroyed by %s", card.name, source.name))
 }

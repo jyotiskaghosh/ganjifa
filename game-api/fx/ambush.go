@@ -10,15 +10,15 @@ import (
 // Ambush ...
 func Ambush(card *match.Card, ctx *match.Context) {
 
-	if event, ok := ctx.Event.(*match.React); ok && event.ID == card.ID {
+	if event, ok := ctx.Event().(*match.React); ok && event.ID == card.ID() {
 
 		// Do this last in case any other cards want to interrupt the flow
 		ctx.Override(func() {
-			playCtx := match.NewContext(ctx.Match, &match.PlayCardEvent{
-				ID: card.ID,
+			playCtx := match.NewContext(ctx.Match(), &match.PlayCardEvent{
+				ID: card.ID(),
 			})
 
-			ctx.Match.HandleFx(playCtx)
+			ctx.Match().HandleFx(playCtx)
 
 			if ctx.Cancelled() {
 				ctx.InterruptFlow()
@@ -34,8 +34,8 @@ func Ambush(card *match.Card, ctx *match.Context) {
 
 			defer card.Tap(true)
 
-			ctx.Match.NewAction(card.Player(), nil, 0, 0, fmt.Sprintf("Should %s ambush?", card.Name()), true)
-			defer ctx.Match.CloseAction(card.Player())
+			ctx.Match().NewAction(card.Player(), nil, 0, 0, fmt.Sprintf("Should %s ambush?", card.Name()), true)
+			defer ctx.Match().CloseAction(card.Player())
 
 			for {
 				select {
@@ -45,24 +45,24 @@ func Ambush(card *match.Card, ctx *match.Context) {
 
 						case *match.AttackPlayer:
 							{
-								c, err := ctx.Match.Opponent(card.Player()).GetCard(event.ID)
+								c, err := ctx.Match().Opponent(card.Player()).GetCard(event.ID)
 								if err != nil {
 									logrus.Debug(err)
 									return
 								}
 
-								ctx.Match.Battle(card, c, false)
+								ctx.Match().Battle(card, c, false)
 							}
 
 						case *match.AttackCreature:
 							{
-								c, err := ctx.Match.Opponent(card.Player()).GetCard(event.ID)
+								c, err := ctx.Match().Opponent(card.Player()).GetCard(event.ID)
 								if err != nil {
 									logrus.Debug(err)
 									return
 								}
 
-								ctx.Match.Battle(card, c, false)
+								ctx.Match().Battle(card, c, false)
 							}
 						}
 

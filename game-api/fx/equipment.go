@@ -9,11 +9,11 @@ import (
 // Equipment has default functionality for equipments
 func Equipment(card *match.Card, ctx *match.Context) {
 
-	switch event := ctx.Event.(type) {
+	switch event := ctx.Event().(type) {
 
 	// On card played
 	case *match.PlayCardEvent:
-		if event.ID == card.ID {
+		if event.ID == card.ID() {
 
 			// Do this last in case any other cards want to interrupt the flow
 			ctx.Override(func() {
@@ -43,15 +43,15 @@ func Equipment(card *match.Card, ctx *match.Context) {
 
 	// When the equipment is played reactively
 	case *match.React:
-		if event.ID == card.ID {
+		if event.ID == card.ID() {
 
 			// Do this last in case any other cards want to interrupt the flow
 			ctx.Override(func() {
-				playCtx := match.NewContext(ctx.Match, &match.PlayCardEvent{
-					ID: card.ID,
+				playCtx := match.NewContext(ctx.Match(), &match.PlayCardEvent{
+					ID: card.ID(),
 				})
 
-				ctx.Match.HandleFx(playCtx)
+				ctx.Match().HandleFx(playCtx)
 
 				if ctx.Cancelled() {
 					ctx.InterruptFlow()
@@ -62,7 +62,7 @@ func Equipment(card *match.Card, ctx *match.Context) {
 
 	// On equip
 	case *match.Equip:
-		if event.ID == card.ID {
+		if event.ID == card.ID() {
 
 			// Do this last in case any other cards want to interrupt the flow
 			ctx.Override(func() {
@@ -72,7 +72,7 @@ func Equipment(card *match.Card, ctx *match.Context) {
 
 				card.AttachTo(event.Creature)
 
-				ctx.Match.Chat("Server", fmt.Sprintf("%s equipped %s on %s", card.Player().Name(), card.Name(), event.Creature.Name()))
+				ctx.Match().Chat("Server", fmt.Sprintf("%s equipped %s on %s", card.Player().Name(), card.Name(), event.Creature.Name()))
 			})
 		}
 	}
