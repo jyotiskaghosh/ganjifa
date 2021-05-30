@@ -1,6 +1,9 @@
 package fx
 
-import "github.com/jyotiskaghosh/ganjifa/game-api/match"
+import (
+	"github.com/jyotiskaghosh/ganjifa/game-api/match"
+	"github.com/sirupsen/logrus"
+)
 
 // Leech ...
 func Leech(card *match.Card, ctx *match.Context) {
@@ -9,7 +12,6 @@ func Leech(card *match.Card, ctx *match.Context) {
 
 	case *match.DamageEvent:
 		if event.Source == card {
-
 			ctx.ScheduleAfter(func() {
 				card.Player().Heal(card, ctx, event.Health)
 			})
@@ -17,9 +19,15 @@ func Leech(card *match.Card, ctx *match.Context) {
 
 	case *match.CreatureDestroyed:
 		if event.Source == card {
-
 			ctx.ScheduleAfter(func() {
-				card.Player().Heal(card, ctx, event.Card.GetDefence(ctx))
+
+				card, err := ctx.Match().GetCard(event.ID)
+				if err != nil {
+					logrus.Debug(err)
+					return
+				}
+
+				card.Player().Heal(card, ctx, card.GetDefence(ctx))
 			})
 		}
 	}

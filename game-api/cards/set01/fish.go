@@ -21,12 +21,16 @@ func Matsyaka() *match.Card {
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 
-				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.Card == card.AttachedTo() {
-					event.Attack += 100
+				if event, ok := ctx.Event().(*match.GetAttackEvent); ok {
+					if card.AttachedTo() != nil && event.ID == card.AttachedTo().ID() {
+						event.Attack += 100
+					}
 				}
 
-				if event, ok := ctx.Event().(*match.GetDefenceEvent); ok && event.Card == card.AttachedTo() {
-					event.Defence += 100
+				if event, ok := ctx.Event().(*match.GetDefenceEvent); ok {
+					if card.AttachedTo() != nil && event.ID == card.AttachedTo().ID() {
+						event.Defence += 100
+					}
 				}
 			},
 		},

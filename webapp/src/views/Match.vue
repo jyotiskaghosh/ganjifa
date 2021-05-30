@@ -231,7 +231,7 @@
         </div>
       </div>
 
-      <div class="hiddenzone">
+      <div class="trapzone">
         <div class="card placeholder">
           <img src="/assets/cards/backside.png" />
         </div>
@@ -244,12 +244,12 @@
         </div>
       </div>
 
-        <div class="hiddenzone">
+        <div class="trapzone">
           <div class="card placeholder">
             <img src="/assets/cards/backside.png" />
           </div>
           <div
-            v-for="(card, index) in state.opponent.hiddenzone"
+            v-for="(card, index) in state.opponent.trapzone"
             :key="index"
             class="card"
           >
@@ -327,12 +327,12 @@
           </div>
         </div>
 
-        <div class="hiddenzone">
+        <div class="trapzone">
           <div class="card placeholder">
             <img src="/assets/cards/backside.png" />
           </div>
           <div
-            v-for="(card, index) in state.me.hiddenzone"
+            v-for="(card, index) in state.me.trapzone"
             :key="index"
             class="card"
           >
@@ -1128,7 +1128,7 @@ export default {
   margin-right: 35px;
 }
 
-.hiddenzone {
+.trapzone {
   overflow: auto;
   white-space: nowrap;
   overflow-y: hidden;

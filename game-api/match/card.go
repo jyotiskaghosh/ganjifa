@@ -1,9 +1,11 @@
 package match
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/jyotiskaghosh/ganjifa/game-api/civ"
+	"github.com/jyotiskaghosh/ganjifa/game-api/family"
 
 	"github.com/sirupsen/logrus"
 	"github.com/ventu-io/go-shortid"
@@ -147,18 +149,6 @@ func (c *Card) AddCondition(handlers ...HandlerFunc) {
 	c.conditions = append(c.conditions, handlers...)
 }
 
-// HasCondition returns true or false based on if an handler is added to the cards list of conditions
-func (c *Card) HasCondition(handler HandlerFunc) bool {
-
-	for _, condition := range c.conditions {
-		if reflect.ValueOf(condition).Pointer() == reflect.ValueOf(handler).Pointer() {
-			return true
-		}
-	}
-
-	return false
-}
-
 // RemoveCondition removes all instances of the given handler from the cards conditions
 func (c *Card) RemoveCondition(handler HandlerFunc) {
 
@@ -210,10 +200,10 @@ func (c *Card) AttachTo(card *Card) {
 		return
 	}
 
-	c.attachedTo = card
 	if err := c.MoveCard(SOUL); err != nil {
 		logrus.Debug(err)
 	}
+	c.attachedTo = card
 }
 
 // Detach detaches a card
@@ -279,7 +269,7 @@ func (c *Card) MoveCard(destination Container) error {
 func (c *Card) GetRank(ctx *Context) int {
 
 	e := &GetRankEvent{
-		Card:  c,
+		ID:    c.id,
 		Event: ctx.event,
 		Rank:  c.rank,
 	}
@@ -292,7 +282,7 @@ func (c *Card) GetRank(ctx *Context) int {
 func (c *Card) GetCivilisation(ctx *Context) map[civ.Civilisation]bool {
 
 	e := &GetCivilisationEvent{
-		Card:  c,
+		ID:    c.id,
 		Event: ctx.event,
 		Civ:   map[civ.Civilisation]bool{c.civ: true},
 	}
@@ -305,7 +295,7 @@ func (c *Card) GetCivilisation(ctx *Context) map[civ.Civilisation]bool {
 func (c *Card) GetFamily(ctx *Context) map[string]bool {
 
 	e := &GetFamilyEvent{
-		Card:   c,
+		ID:     c.id,
 		Event:  ctx.event,
 		Family: map[string]bool{c.family: true},
 	}
@@ -318,7 +308,7 @@ func (c *Card) GetFamily(ctx *Context) map[string]bool {
 func (c *Card) GetAttack(ctx *Context) int {
 
 	e := &GetAttackEvent{
-		Card:   c,
+		ID:     c.id,
 		Event:  ctx.event,
 		Attack: c.attack,
 	}
@@ -331,11 +321,103 @@ func (c *Card) GetAttack(ctx *Context) int {
 func (c *Card) GetDefence(ctx *Context) int {
 
 	e := &GetDefenceEvent{
-		Card:    c,
+		ID:      c.id,
 		Event:   ctx.event,
 		Defence: c.defence,
 	}
 	ctx.match.HandleFx(NewContext(ctx.match, e))
 
 	return e.Defence
+}
+
+// GetHandlers returns the HandlerFuncs of a given card
+func (c *Card) GetHandlers(ctx *Context) []HandlerFunc {
+
+	e := &GetHandlerEvent{
+		ID:       c.id,
+		Event:    ctx.event,
+		Handlers: append(c.handlers, c.conditions...),
+	}
+	ctx = NewContext(ctx.match, e)
+
+	for _, card := range ctx.match.CollectCards() {
+
+		for _, h := range append(card.handlers, card.conditions...) {
+
+			if ctx.cancel {
+				break
+			}
+
+			h(card, ctx)
+		}
+	}
+
+	return e.Handlers
+}
+
+// HasHandler returns true or false based on if c has the specified handler
+func (c *Card) HasHandler(handler HandlerFunc, ctx *Context) bool {
+	for _, condition := range c.GetHandlers(ctx) {
+		if reflect.ValueOf(condition).Pointer() == reflect.ValueOf(handler).Pointer() {
+			return true
+		}
+	}
+	return false
+}
+
+// HasFamily if card has given family
+func (c *Card) HasFamily(family string, ctx *Context) bool {
+	for f := range c.GetFamily(ctx) {
+		if family == f {
+			return true
+		}
+	}
+	return false
+}
+
+// HasCivilisation if card has given civilisation
+func (c *Card) HasCivilisation(civilisation civ.Civilisation, ctx *Context) bool {
+	for civ := range c.GetCivilisation(ctx) {
+		if civilisation == civ {
+			return true
+		}
+	}
+	return false
+}
+
+// RemoveEquipments ...
+func (c *Card) RemoveEquipments() {
+	for _, c = range c.Attachments() {
+		if c.family == family.Equipment {
+			if err := c.MoveCard(GRAVEYARD); err != nil {
+				logrus.Debug(err)
+				return
+			}
+		}
+	}
+}
+
+// AmIPlayed returns true or false based on if the card is played
+func (c *Card) AmIPlayed(ctx *Context) bool {
+	event, ok := ctx.event.(*PlayCardEvent)
+	return ok && event.ID == c.id
+}
+
+// EvolveTo handles evolution
+func (c *Card) EvolveTo(card *Card) {
+
+	if err := card.MoveCard(BATTLEZONE); err != nil {
+		logrus.Debug(err)
+		return
+	}
+
+	card.tapped = c.tapped
+
+	c.AttachTo(card)
+
+	// This is done to maintain a single identity for a creature
+	c.id, card.id = card.id, c.id
+	c.conditions, card.conditions = card.conditions, c.conditions
+
+	c.player.match.Chat("Server", fmt.Sprintf("%s evolved %s to %s", c.player.Name(), c.name, card.name))
 }

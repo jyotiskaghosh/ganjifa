@@ -57,9 +57,7 @@ func Syena() *match.Card {
 		Handlers: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
-
-				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.Card == card {
-
+				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.ID == card.ID() {
 					if _, ok := event.Event.(*match.AttackPlayer); ok {
 						event.Attack += 400
 					}
@@ -84,7 +82,6 @@ func Atayi() *match.Card {
 		Handlers: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
-
 				if event, ok := ctx.Event().(*match.DamageEvent); ok && card.Zone() == match.BATTLEZONE && event.Player != card.Player() {
 					card.AddCondition(fx.CantBeBlocked)
 				}

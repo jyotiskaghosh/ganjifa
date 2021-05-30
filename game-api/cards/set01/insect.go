@@ -23,9 +23,7 @@ func Pipilika() *match.Card {
 		Handlers: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
-
-				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.Card == card {
-
+				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.ID == card.ID() {
 					ctx.ScheduleAfter(func() {
 						event.Attack *= 2
 					})
@@ -102,16 +100,28 @@ func MahisiPipilika() *match.Card {
 					card.Player().ShuffleDeck()
 				}
 
-				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.Card != card {
+				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.ID != card.ID() {
 
-					if event.Card.Player() == card.Player() && event.Card.HasFamily(family.Insect, ctx) {
+					card, err := card.Player().GetCard(event.ID)
+					if err != nil {
+						logrus.Debug(err)
+						return
+					}
+
+					if card.HasFamily(family.Insect, ctx) {
 						event.Attack += 100
 					}
 				}
 
-				if event, ok := ctx.Event().(*match.GetDefenceEvent); ok && event.Card != card {
+				if event, ok := ctx.Event().(*match.GetDefenceEvent); ok && event.ID != card.ID() {
 
-					if event.Card.Player() == card.Player() && event.Card.HasFamily(family.Insect, ctx) {
+					card, err := card.Player().GetCard(event.ID)
+					if err != nil {
+						logrus.Debug(err)
+						return
+					}
+
+					if card.HasFamily(family.Insect, ctx) {
 						event.Defence += 100
 					}
 				}

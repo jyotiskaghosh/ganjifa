@@ -23,7 +23,6 @@ func Ayudhabhrt() *match.Card {
 		Handlers: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
-
 				for _, c := range card.Attachments() {
 					if c.Family() == family.Equipment {
 						fx.AttackModifier(card, ctx, 100)
@@ -68,9 +67,7 @@ func Sastravikrayin() *match.Card {
 		Handlers: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
-
-				if match.AmIPlayed(card, ctx) {
-
+				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 
 						cards, err := card.Player().Container(match.DECK)
@@ -120,17 +117,16 @@ func Astrakara() *match.Card {
 		Handlers: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
+				if event, ok := ctx.Event().(*match.GetRankEvent); ok && card.Zone() == match.BATTLEZONE {
 
-				if card.Zone() != match.BATTLEZONE {
-					return
-				}
+					card, err := card.Player().GetCard(event.ID)
+					if err != nil {
+						logrus.Debug(err)
+						return
+					}
 
-				if event, ok := ctx.Event().(*match.GetRankEvent); ok && event.Card.Player() == card.Player() {
-
-					if event.Card.Family() == family.Equipment {
-						if event.Rank > 0 {
-							event.Rank--
-						}
+					if card.Family() == family.Equipment && event.Rank > 0 {
+						event.Rank--
 					}
 				}
 			},

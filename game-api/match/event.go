@@ -26,8 +26,8 @@ type EvolveEvent struct {
 	Creature *Card
 }
 
-// Equip is fired when a creature is being equiped
-type Equip struct {
+// EquipEvent is fired when a creature is being equiped
+type EquipEvent struct {
 	ID       string
 	Creature *Card
 }
@@ -43,16 +43,16 @@ type AttackCreature struct {
 	TargetID string
 }
 
-// React is fired when you play cards from hiddenzone during opponent's attack
-type React struct {
-	ID    string
-	Event interface{}
+// TrapEvent is fired when you play cards from hiddenzone during opponent's attack
+type TrapEvent struct {
+	ID       string
+	Attacker *Card
 }
 
-// Block is fired when a creature attempts
-type Block struct {
+// BlockEvent is fired when a creature attempts to block an incoming attack
+type BlockEvent struct {
+	ID       string
 	Attacker *Card
-	Blocker  *Card
 }
 
 // Battle is fired when two creatures are fighting, i.e. from attacking a creature or blocking an attack
@@ -64,7 +64,7 @@ type Battle struct {
 
 // CreatureDestroyed is fired when a creature dies in battle or is destroyed from another source, such as a spell
 type CreatureDestroyed struct {
-	Card   *Card
+	ID     string
 	Source *Card
 }
 
@@ -84,37 +84,44 @@ type HealEvent struct {
 	Health int
 }
 
-// GetAttackEvent is fired whenever a cards attack is to be used
+// GetAttackEvent is fired whenever a card's attack is to be used
 type GetAttackEvent struct {
-	Card   *Card
+	ID     string
 	Event  interface{}
 	Attack int
 }
 
-// GetDefenceEvent is fired whenever a cards defence is to be used
+// GetDefenceEvent is fired whenever a card's defence is to be used
 type GetDefenceEvent struct {
-	Card    *Card
+	ID      string
 	Event   interface{}
 	Defence int
 }
 
-// GetCivilisationEvent is fired whenever a cards civ is to be used
+// GetCivilisationEvent is fired whenever a card's civ is to be used
 type GetCivilisationEvent struct {
-	Card  *Card
+	ID    string
 	Event interface{}
 	Civ   map[civ.Civilisation]bool
 }
 
-// GetFamilyEvent is fired whenever a cards family is to be used
+// GetFamilyEvent is fired whenever a card's family is to be used
 type GetFamilyEvent struct {
-	Card   *Card
+	ID     string
 	Event  interface{}
 	Family map[string]bool
 }
 
-// GetRankEvent is fired whenever a cards rank is to be used
+// GetRankEvent is fired whenever a card's rank is to be used
 type GetRankEvent struct {
-	Card  *Card
+	ID    string
 	Event interface{}
 	Rank  int
+}
+
+// GetHandlerEvent is fired whenever a card's handlers are to be used
+type GetHandlerEvent struct {
+	ID       string
+	Event    interface{}
+	Handlers []HandlerFunc
 }

@@ -23,7 +23,6 @@ func Salavrka() *match.Card {
 		Handlers: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
-
 				if cards, err := card.Player().Container(match.BATTLEZONE); err == nil {
 					for _, c := range cards {
 						if c != card && c.Family() == family.Beast {
@@ -70,9 +69,7 @@ func Krostr() *match.Card {
 		Handlers: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
-
-				if match.AmIPlayed(card, ctx) {
-
+				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 
 						cards, err := card.Player().Container(match.DECK)
@@ -117,8 +114,8 @@ func Dvipin() *match.Card {
 		Rank:    1,
 		Civ:     civ.PRITHVI,
 		Family:  family.Beast,
-		Attack:  300,
-		Defence: 100,
+		Attack:  400,
+		Defence: 200,
 		Handlers: []match.HandlerFunc{
 			fx.Creature,
 			fx.Ambush,

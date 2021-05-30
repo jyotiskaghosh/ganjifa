@@ -8,7 +8,6 @@ import (
 
 // Poisonous ...
 func Poisonous(card *match.Card, ctx *match.Context) {
-
 	if event, ok := ctx.Event().(*match.Battle); ok && event.Defender == card {
 		ctx.ScheduleAfter(func() {
 			event.Attacker.AddCondition(DestroyEndOfTurn)
@@ -19,7 +18,6 @@ func Poisonous(card *match.Card, ctx *match.Context) {
 
 // Venomous ...
 func Venomous(card *match.Card, ctx *match.Context) {
-
 	if event, ok := ctx.Event().(*match.Battle); ok && event.Attacker == card {
 		ctx.ScheduleAfter(func() {
 			event.Defender.AddCondition(DestroyEndOfTurn)

@@ -195,7 +195,7 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
-			if err := c.MoveCard(HIDDENZONE); err != nil {
+			if err := c.MoveCard(TRAPZONE); err != nil {
 				logrus.Debug(err)
 				return
 			}
@@ -388,7 +388,6 @@ func (m *Match) WritePlayer(p *Player, msg interface{}) {
 
 // Warn sends a warning to the specified player ref
 func Warn(p *PlayerReference, message string) {
-
 	p.Write(ChatMessage{
 		Header:  "warn",
 		Message: message,
@@ -397,7 +396,6 @@ func Warn(p *PlayerReference, message string) {
 
 // WarnPlayer sends a warning to the specified player
 func (m *Match) WarnPlayer(p *Player, message string) {
-
 	m.WritePlayer(p, ChatMessage{
 		Header:  "warn",
 		Message: message,
@@ -412,22 +410,18 @@ func (m *Match) Battle(attacker *Card, defender *Card, blocked bool) {
 	}
 
 	ctx := NewContext(m, &Battle{Attacker: attacker, Defender: defender, Blocked: blocked})
-
 	ctx.Override(func() {
 		if attacker.GetAttack(ctx) > defender.GetDefence(ctx) {
 			m.Destroy(defender, attacker, fmt.Sprintf("%s was destroyed by %s", defender.name, attacker.name))
 		}
 	})
-
 	m.HandleFx(ctx)
-
-	m.BroadcastState()
 }
 
 // Destroy sends the given card to its players graveyard
 func (m *Match) Destroy(card *Card, source *Card, text string) {
 
-	ctx := NewContext(m, &CreatureDestroyed{Card: card, Source: source})
+	ctx := NewContext(m, &CreatureDestroyed{ID: card.id, Source: source})
 
 	ctx.ScheduleAfter(func() {
 		m.Chat("Server", text)
@@ -436,7 +430,8 @@ func (m *Match) Destroy(card *Card, source *Card, text string) {
 	m.HandleFx(ctx)
 }
 
-func (m *Match) collectCards() []*Card {
+// CollectCards ...
+func (m *Match) CollectCards() []*Card {
 
 	players := make([]*PlayerReference, 0)
 
@@ -452,7 +447,7 @@ func (m *Match) collectCards() []*Card {
 	for _, p := range players {
 		cards = append(cards, p.Player.battlezone...)
 		cards = append(cards, p.Player.soul...)
-		cards = append(cards, p.Player.hiddenzone...)
+		cards = append(cards, p.Player.trapzone...)
 		cards = append(cards, p.Player.hand...)
 		cards = append(cards, p.Player.graveyard...)
 		cards = append(cards, p.Player.deck...)
@@ -461,26 +456,14 @@ func (m *Match) collectCards() []*Card {
 	return cards
 }
 
-// ResolveEvent runs a check on a particular context
-func (m *Match) ResolveEvent(ctx *Context) {
-
-	for _, card := range m.collectCards() {
-
-		for _, h := range append(card.handlers, card.conditions...) {
-
-			if ctx.cancel {
-				return
-			}
-
-			h(card, ctx)
-		}
-	}
-}
-
 // HandleFx ...
 func (m *Match) HandleFx(ctx *Context) {
 
-	m.ResolveEvent(ctx)
+	for _, c := range m.CollectCards() {
+		for _, h := range c.GetHandlers(ctx) {
+			h(c, ctx)
+		}
+	}
 
 	for _, h := range ctx.preFxs {
 
@@ -494,11 +477,9 @@ func (m *Match) HandleFx(ctx *Context) {
 	if ctx.cancel {
 		return
 	}
-
 	if ctx.mainFx != nil {
 		ctx.mainFx()
 	}
-
 	if ctx.cancel {
 		return
 	}
@@ -506,6 +487,8 @@ func (m *Match) HandleFx(ctx *Context) {
 	for _, h := range ctx.postFxs {
 		h()
 	}
+
+	m.BroadcastState()
 }
 
 // BroadcastState sends the current game's state to both players, hiding the opponent's hand
@@ -540,10 +523,10 @@ func (m *Match) BroadcastState() {
 	}
 
 	p1state.State.Opponent.Hand = hideCards(len(p1state.State.Opponent.Hand))
-	p1state.State.Opponent.Hiddenzone = hideCards(len(p1state.State.Opponent.Hiddenzone))
+	p1state.State.Opponent.Trapzone = hideCards(len(p1state.State.Opponent.Trapzone))
 
 	p2state.State.Opponent.Hand = hideCards(len(p2state.State.Opponent.Hand))
-	p2state.State.Opponent.Hiddenzone = hideCards(len(p2state.State.Opponent.Hiddenzone))
+	p2state.State.Opponent.Trapzone = hideCards(len(p2state.State.Opponent.Trapzone))
 
 	m.player1.Write(p1state)
 	m.player2.Write(p2state)
@@ -562,7 +545,6 @@ func (m *Match) End(winner *Player, reason string) {
 
 // NewAction prompts the user to make a selection of the specified []Cards
 func (m *Match) NewAction(p *Player, cards []*Card, minSelections int, maxSelections int, text string, cancellable bool) {
-
 	m.WritePlayer(p, ActionMessage{
 		Header:        "action",
 		Cards:         denormalizeCards(cards),
@@ -575,7 +557,6 @@ func (m *Match) NewAction(p *Player, cards []*Card, minSelections int, maxSelect
 
 // CloseAction closes the card selection popup for the given player
 func (m *Match) CloseAction(p *Player) {
-
 	m.WritePlayer(p, Message{
 		Header: "close_action",
 	})
@@ -583,7 +564,6 @@ func (m *Match) CloseAction(p *Player) {
 
 // ShowCards shows the specified cards to the player with a message of why it is being shown
 func (m *Match) ShowCards(p *Player, message string, cards []string) {
-
 	m.WritePlayer(p, ShowCardsMessage{
 		Header:  "show_cards",
 		Message: message,
@@ -637,8 +617,6 @@ func (m *Match) beginNewTurn() {
 	m.CurrentPlayer().Player.turnNo++
 
 	m.HandleFx(NewContext(m, &BeginTurnStep{}))
-
-	m.BroadcastState()
 
 	m.untapStep()
 }
@@ -697,12 +675,9 @@ func (m *Match) EndTurn() {
 
 // PlayCard is called when the player attempts to play a card
 func (m *Match) PlayCard(id string) {
-
 	m.HandleFx(NewContext(m, &PlayCardEvent{
 		ID: id,
 	}))
-
-	m.BroadcastState()
 }
 
 // AttackPlayer is called when the player attempts to attack the opposing player
@@ -713,11 +688,9 @@ func (m *Match) AttackPlayer(pr *PlayerReference, id string) {
 	})
 
 	m.HandleFx(ctx)
-
-	m.BroadcastState()
 }
 
-// AttackCreature is called when the player attempts to attack the opposing player
+// AttackCreature is called when the player attempts to attack an opponent's creature
 func (m *Match) AttackCreature(pr *PlayerReference, id string, targetID string) {
 
 	ctx := NewContext(m, &AttackCreature{
@@ -726,8 +699,6 @@ func (m *Match) AttackCreature(pr *PlayerReference, id string, targetID string) 
 	})
 
 	m.HandleFx(ctx)
-
-	m.BroadcastState()
 }
 
 // GetCard returns the *Card from a container from either players

@@ -17,7 +17,7 @@ const (
 	HAND       Container = "hand"
 	GRAVEYARD  Container = "graveyard"
 	BATTLEZONE Container = "battlezone"
-	HIDDENZONE Container = "hiddenzone"
+	TRAPZONE   Container = "trapzone"
 	SOUL       Container = "soul"
 )
 
@@ -47,7 +47,7 @@ type Player struct {
 	hand       []*Card
 	graveyard  []*Card
 	battlezone []*Card
-	hiddenzone []*Card
+	trapzone   []*Card
 	soul       []*Card
 	life       int
 
@@ -70,7 +70,7 @@ func newPlayer(match *Match, turn bool) *Player {
 		hand:       make([]*Card, 0),
 		graveyard:  make([]*Card, 0),
 		battlezone: make([]*Card, 0),
-		hiddenzone: make([]*Card, 0),
+		trapzone:   make([]*Card, 0),
 		soul:       make([]*Card, 0),
 		life:       LIFE,
 		Action:     make(chan []string),
@@ -115,8 +115,8 @@ func (p *Player) containerRef(c Container) (*[]*Card, error) {
 		return &p.graveyard, nil
 	case BATTLEZONE:
 		return &p.battlezone, nil
-	case HIDDENZONE:
-		return &p.hiddenzone, nil
+	case TRAPZONE:
+		return &p.trapzone, nil
 	case SOUL:
 		return &p.soul, nil
 	default:
@@ -136,8 +136,8 @@ func (p *Player) Container(c Container) ([]*Card, error) {
 		return p.graveyard, nil
 	case BATTLEZONE:
 		return p.battlezone, nil
-	case HIDDENZONE:
-		return p.hiddenzone, nil
+	case TRAPZONE:
+		return p.trapzone, nil
 	case SOUL:
 		return p.soul, nil
 	default:
@@ -258,7 +258,7 @@ func (p *Player) HasCard(container Container, id string) bool {
 // GetCard returns a pointer to a Card by its ID and container
 func (p *Player) GetCard(id string) (*Card, error) {
 
-	for _, card := range p.match.collectCards() {
+	for _, card := range p.match.CollectCards() {
 		if card.id == id {
 			return card, nil
 		}
@@ -294,8 +294,6 @@ func (p *Player) Damage(source *Card, ctx *Context, health int) {
 
 	ctx.match.HandleFx(ctx)
 
-	ctx.match.BroadcastState()
-
 	if p.life <= 0 {
 		ctx.match.End(p.match.Opponent(p), fmt.Sprintf("%s has no life left", p.Name()))
 	}
@@ -326,8 +324,6 @@ func (p *Player) Heal(source *Card, ctx *Context, health int) {
 	})
 
 	ctx.match.HandleFx(ctx)
-
-	ctx.match.BroadcastState()
 }
 
 // denormalized returns a server.PlayerState
@@ -339,7 +335,7 @@ func (p *Player) denormalized() PlayerState {
 		Hand:       denormalizeCards(p.hand),
 		Graveyard:  denormalizeCards(p.graveyard),
 		Battlezone: denormalizeCards(p.battlezone),
-		Hiddenzone: denormalizeCards(p.hiddenzone),
+		Trapzone:   denormalizeCards(p.trapzone),
 	}
 
 	return state
@@ -380,4 +376,70 @@ func hideCards(n int) []CardState {
 	}
 
 	return arr
+}
+
+// Search prompts the user to select n cards from the specified container
+func (p *Player) Search(cards []*Card, text string, min int, max int, cancellable bool) []*Card {
+
+	return p.Filter(cards, text, min, max, cancellable, func(c *Card) bool { return true })
+}
+
+// Filter prompts the user to select n cards from the specified container that matches the given filter
+func (p *Player) Filter(cards []*Card, text string, min int, max int, cancellable bool, filter func(*Card) bool) []*Card {
+
+	result := make([]*Card, 0)
+	filtered := make([]*Card, 0)
+
+	for _, mCard := range cards {
+		if filter(mCard) {
+			filtered = append(filtered, mCard)
+		}
+	}
+
+	if len(filtered) < 1 {
+		return result
+	}
+
+	p.match.NewAction(p, filtered, min, max, text, cancellable)
+	defer p.match.CloseAction(p)
+
+	for {
+		select {
+		case action := <-p.Action:
+			{
+				if len(action) < min || len(action) > max || !AssertCardsIn(filtered, action) {
+					p.match.WarnPlayer(p, "The cards you selected does not meet the requirements")
+					continue
+				}
+
+				for _, id := range action {
+					c, err := p.GetCard(id)
+					if err != nil {
+						logrus.Debug(err)
+						return result
+					}
+					result = append(result, c)
+				}
+
+				return result
+			}
+
+		case cancel := <-p.Cancel:
+			if cancellable && cancel {
+				return result
+			}
+		}
+	}
+}
+
+// GetCreatures ...
+func (p *Player) GetCreatures() []*Card {
+
+	creatures := make([]*Card, 0)
+
+	if cards, err := p.Container(BATTLEZONE); err == nil {
+		creatures = append(creatures, cards...)
+	}
+
+	return creatures
 }
