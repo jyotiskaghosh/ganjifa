@@ -23,50 +23,38 @@ func Creature(card *match.Card, ctx *match.Context) {
 	// On playing the card
 	case *match.PlayCardEvent:
 		if event.ID == card.ID() {
+			if len(event.Targets) > 0 {
 
-			if card.GetRank(ctx) > 0 {
+				target, err := card.Player().GetCard(event.Targets[0])
+				if err != nil {
+					ctx.InterruptFlow()
+					logrus.Debug(err)
+					return
+				}
+
+				dif := card.GetRank(ctx) - target.GetRank(ctx)
+				if target.HasFamily(card.Family(), ctx) && dif >= 0 && dif <= 1 {
+					ctx.InterruptFlow()
+					return
+				}
 
 				// Do this last in case any other cards want to interrupt the flow
 				ctx.Override(func() {
-					match.Evolve(
-						card,
-						ctx,
-						fmt.Sprintf("choose a %s creature to evolve %s from your battlezone", card.Family(), card.Name()),
-						func(x *match.Card) bool {
-							dif := card.GetRank(ctx) - x.GetRank(ctx)
-							return x.HasFamily(card.Family(), ctx) && dif >= 0 && dif <= 1
-						})
+					target.EvolveTo(card)
+					card.AddCondition(CantEvolve)
 				})
-			} else {
+
+			} else if card.GetRank(ctx) == 0 {
 
 				// Do this last in case any other cards want to interrupt the flow
 				ctx.Override(func() {
-
 					if err := card.MoveCard(match.BATTLEZONE); err != nil {
 						logrus.Debug(err)
 						return
 					}
 					card.AddCondition(CantEvolve)
-
-					ctx.Match().Chat("Server", fmt.Sprintf("%s summoned %s to the battle zone", card.Player().Name(), card.Name()))
 				})
 			}
-		}
-
-	// On evolve
-	case *match.EvolveEvent:
-		if event.ID == card.ID() {
-
-			if event.Creature.Zone() != match.BATTLEZONE {
-				ctx.InterruptFlow()
-				return
-			}
-
-			// Do this last in case any other cards want to interrupt the flow
-			ctx.Override(func() {
-				event.Creature.EvolveTo(card)
-				card.AddCondition(CantEvolve)
-			})
 		}
 
 	// Attack the player

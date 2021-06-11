@@ -1,8 +1,6 @@
 package match
 
 import (
-	"fmt"
-
 	"github.com/jyotiskaghosh/ganjifa/game-api/family"
 
 	"github.com/sirupsen/logrus"
@@ -29,70 +27,6 @@ func AssertCardsIn(src []*Card, test []string) bool {
 	return true
 }
 
-// Evolve handles evolution
-func Evolve(card *Card, ctx *Context, text string, filter func(*Card) bool) {
-
-	cards := card.player.Filter(
-		card.player.battlezone,
-		text,
-		1,
-		1,
-		true,
-		func(x *Card) bool {
-			return filter(x) && CanPerformEvent(NewContext(ctx.match, &EvolveEvent{
-				ID:       card.id,
-				Creature: x,
-			}))
-		})
-
-	if len(cards) < 1 {
-		ctx.InterruptFlow()
-		return
-	}
-
-	evoCtx := NewContext(ctx.match, &EvolveEvent{
-		ID:       card.id,
-		Creature: cards[0],
-	})
-	ctx.match.HandleFx(evoCtx)
-
-	if evoCtx.cancel {
-		ctx.InterruptFlow()
-	}
-}
-
-// Equip handles equiping
-func Equip(card *Card, ctx *Context, text string, filter func(*Card) bool) {
-
-	cards := card.player.Filter(
-		card.player.battlezone,
-		text,
-		1,
-		1,
-		true,
-		func(x *Card) bool {
-			return filter(x) && CanPerformEvent(NewContext(ctx.match, &EquipEvent{
-				ID:       card.id,
-				Creature: x,
-			}))
-		})
-
-	if len(cards) < 1 {
-		ctx.InterruptFlow()
-		return
-	}
-
-	equipCtx := NewContext(ctx.match, &EquipEvent{
-		ID:       card.id,
-		Creature: cards[0],
-	})
-	ctx.match.HandleFx(equipCtx)
-
-	if equipCtx.cancel {
-		ctx.InterruptFlow()
-	}
-}
-
 // Devolve ...
 func Devolve(card *Card, src *Card) {
 
@@ -105,7 +39,7 @@ func Devolve(card *Card, src *Card) {
 		func(x *Card) bool { return x.Family() != family.Equipment })
 
 	if len(cards) < 1 {
-		card.player.match.Destroy(card, src, fmt.Sprintf("%s was destroyed by %s", card.name, src.name))
+		card.player.match.Destroy(card, src)
 		return
 	}
 
@@ -124,7 +58,7 @@ func Devolve(card *Card, src *Card) {
 	card.id, cards[0].id = cards[0].id, card.id
 	card.conditions, cards[0].conditions = cards[0].conditions, card.conditions
 
-	card.player.match.Destroy(card, src, fmt.Sprintf("%s was destroyed by %s", card.name, src.name))
+	card.player.match.Destroy(card, src)
 }
 
 // CanPerformEvent ...

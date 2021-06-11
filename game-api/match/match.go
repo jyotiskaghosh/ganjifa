@@ -199,8 +199,6 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				logrus.Debug(err)
 				return
 			}
-
-			m.BroadcastState()
 		}
 
 	case "play_card":
@@ -217,16 +215,15 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 			m.waiting(true)
 			defer m.waiting(false)
 
-			var msg struct {
-				ID string `json:"id"`
-			}
+			msg := PlayCardEvent{}
 			if err := json.Unmarshal(data, &msg); err != nil {
 				logrus.Debug(err)
 				return
 			}
 
-			if ok := pr.Player.HasCard(HAND, msg.ID); ok {
-				m.PlayCard(msg.ID)
+			if ok := pr.Player.HasCard(HAND, msg.ID); ok &&
+				AssertCardsIn(append(pr.Player.GetCreatures(), m.Opponent(pr.Player).GetCreatures()...), msg.Targets) {
+				m.PlayCard(msg.ID, msg.Targets)
 			}
 		}
 
@@ -412,22 +409,17 @@ func (m *Match) Battle(attacker *Card, defender *Card, blocked bool) {
 	ctx := NewContext(m, &Battle{Attacker: attacker, Defender: defender, Blocked: blocked})
 	ctx.Override(func() {
 		if attacker.GetAttack(ctx) > defender.GetDefence(ctx) {
-			m.Destroy(defender, attacker, fmt.Sprintf("%s was destroyed by %s", defender.name, attacker.name))
+			m.Destroy(defender, attacker)
 		}
 	})
 	m.HandleFx(ctx)
 }
 
 // Destroy sends the given card to its players graveyard
-func (m *Match) Destroy(card *Card, source *Card, text string) {
-
+func (m *Match) Destroy(card *Card, source *Card) {
 	ctx := NewContext(m, &CreatureDestroyed{ID: card.id, Source: source})
-
-	ctx.ScheduleAfter(func() {
-		m.Chat("Server", text)
-	})
-
 	m.HandleFx(ctx)
+	m.BroadcastState(ctx.event)
 }
 
 // CollectCards ...
@@ -487,12 +479,10 @@ func (m *Match) HandleFx(ctx *Context) {
 	for _, h := range ctx.postFxs {
 		h()
 	}
-
-	m.BroadcastState()
 }
 
 // BroadcastState sends the current game's state to both players, hiding the opponent's hand
-func (m *Match) BroadcastState() {
+func (m *Match) BroadcastState(event interface{}) {
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -519,6 +509,7 @@ func (m *Match) BroadcastState() {
 			MyTurn:   m.player2.Player.turn,
 			Me:       player2,
 			Opponent: player1,
+			Event:    event,
 		},
 	}
 
@@ -632,30 +623,31 @@ func (m *Match) untapStep() {
 // startOfTurnStep ...
 func (m *Match) startOfTurnStep() {
 
-	m.HandleFx(NewContext(m, &StartOfTurnStep{}))
-
-	m.Chat("Server", fmt.Sprintf("Your turn, %s", m.CurrentPlayer().Player.Name()))
+	ctx := NewContext(m, &StartOfTurnStep{})
+	m.HandleFx(ctx)
 
 	m.drawStep()
+	m.BroadcastState(ctx.event)
 }
 
 // drawStep ...
 func (m *Match) drawStep() {
 
-	m.HandleFx(NewContext(m, &DrawStep{}))
+	ctx := NewContext(m, &DrawStep{})
+	m.HandleFx(ctx)
 
 	p := m.CurrentPlayer().Player
 	p.DrawCards(1)
 
-	m.BroadcastState()
+	m.BroadcastState(ctx.event)
 }
 
 // endStep ...
 func (m *Match) endStep() {
 
-	m.HandleFx(NewContext(m, &EndStep{}))
-
-	m.Chat("Server", fmt.Sprintf("%s ended their turn", m.CurrentPlayer().Player.Name()))
+	ctx := NewContext(m, &EndStep{})
+	m.HandleFx(ctx)
+	m.BroadcastState(ctx.event)
 
 	m.beginNewTurn()
 }
@@ -663,51 +655,47 @@ func (m *Match) endStep() {
 // EndTurn is called when the player attempts to end their turn
 // If the context is not cancelled by a card, the endStep is called
 func (m *Match) EndTurn() {
-
 	ctx := NewContext(m, &EndTurnEvent{})
-
 	m.HandleFx(ctx)
-
 	if !ctx.cancel {
 		m.endStep()
 	}
 }
 
 // PlayCard is called when the player attempts to play a card
-func (m *Match) PlayCard(id string) {
-	m.HandleFx(NewContext(m, &PlayCardEvent{
-		ID: id,
-	}))
+func (m *Match) PlayCard(id string, targets []string) {
+	ctx := NewContext(m, &PlayCardEvent{
+		ID:      id,
+		Targets: targets,
+	})
+	m.HandleFx(ctx)
+	m.BroadcastState(ctx.event)
 }
 
 // AttackPlayer is called when the player attempts to attack the opposing player
 func (m *Match) AttackPlayer(pr *PlayerReference, id string) {
-
 	ctx := NewContext(m, &AttackPlayer{
 		ID: id,
 	})
-
 	m.HandleFx(ctx)
+	m.BroadcastState(ctx.event)
 }
 
 // AttackCreature is called when the player attempts to attack an opponent's creature
 func (m *Match) AttackCreature(pr *PlayerReference, id string, targetID string) {
-
 	ctx := NewContext(m, &AttackCreature{
 		ID:       id,
 		TargetID: targetID,
 	})
-
 	m.HandleFx(ctx)
+	m.BroadcastState(ctx.event)
 }
 
 // GetCard returns the *Card from a container from either players
 func (m *Match) GetCard(id string) (*Card, error) {
-
 	c, err := m.player1.Player.GetCard(id)
 	if err != nil {
 		return m.player2.Player.GetCard(id)
 	}
-
 	return c, nil
 }

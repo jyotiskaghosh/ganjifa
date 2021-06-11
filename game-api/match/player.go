@@ -190,6 +190,7 @@ func (p *Player) createDeck(cards []int) error {
 
 	p.deck = deck
 	p.ready = true
+
 	return nil
 }
 
@@ -293,6 +294,7 @@ func (p *Player) Damage(source *Card, ctx *Context, health int) {
 	})
 
 	ctx.match.HandleFx(ctx)
+	ctx.match.BroadcastState(ctx.event)
 
 	if p.life <= 0 {
 		ctx.match.End(p.match.Opponent(p), fmt.Sprintf("%s has no life left", p.Name()))
@@ -324,6 +326,7 @@ func (p *Player) Heal(source *Card, ctx *Context, health int) {
 	})
 
 	ctx.match.HandleFx(ctx)
+	ctx.match.BroadcastState(ctx.event)
 }
 
 // denormalized returns a server.PlayerState
@@ -380,7 +383,6 @@ func hideCards(n int) []CardState {
 
 // Search prompts the user to select n cards from the specified container
 func (p *Player) Search(cards []*Card, text string, min int, max int, cancellable bool) []*Card {
-
 	return p.Filter(cards, text, min, max, cancellable, func(c *Card) bool { return true })
 }
 

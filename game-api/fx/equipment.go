@@ -1,9 +1,8 @@
 package fx
 
 import (
-	"fmt"
-
 	"github.com/jyotiskaghosh/ganjifa/game-api/match"
+	"github.com/sirupsen/logrus"
 )
 
 // Equipment has default functionality for equipments
@@ -15,15 +14,27 @@ func Equipment(card *match.Card, ctx *match.Context) {
 	case *match.PlayCardEvent:
 		if event.ID == card.ID() {
 
+			if len(event.Targets) <= 0 {
+				ctx.InterruptFlow()
+				return
+			}
+
+			target, err := card.Player().GetCard(event.Targets[0])
+			if err != nil {
+				ctx.InterruptFlow()
+				logrus.Debug(err)
+				return
+			}
+
+			if !target.HasCivilisation(card.Civ(), ctx) && card.GetRank(ctx) > target.GetRank(ctx) {
+				ctx.InterruptFlow()
+				return
+			}
+
 			// Do this last in case any other cards want to interrupt the flow
 			ctx.Override(func() {
-				match.Equip(
-					card,
-					ctx,
-					fmt.Sprintf("choose a creature to equip %s from your battlezone", card.Name()),
-					func(x *match.Card) bool {
-						return x.HasCivilisation(card.Civ(), ctx) && card.GetRank(ctx) <= x.GetRank(ctx)
-					})
+				target.RemoveEquipments()
+				card.AttachTo(target)
 			})
 		}
 
@@ -56,24 +67,6 @@ func Equipment(card *match.Card, ctx *match.Context) {
 	case *match.GetDefenceEvent:
 		if card.AttachedTo() != nil && event.ID == card.AttachedTo().ID() {
 			event.Defence += card.Defence()
-		}
-
-		// On equip
-	case *match.EquipEvent:
-		if event.ID == card.ID() {
-
-			if event.Creature.Zone() != match.BATTLEZONE {
-				ctx.InterruptFlow()
-				return
-			}
-
-			// Do this last in case any other cards want to interrupt the flow
-			ctx.Override(func() {
-				// Destroy existing equipment if any
-				event.Creature.RemoveEquipments()
-				card.AttachTo(event.Creature)
-				ctx.Match().Chat("Server", fmt.Sprintf("%s equipped %s on %s", card.Player().Name(), card.Name(), event.Creature.Name()))
-			})
 		}
 	}
 }

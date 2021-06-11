@@ -22,24 +22,24 @@ func EnergySurge() *match.Card {
 		Handlers: []match.HandlerFunc{
 			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
+				if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
+
+					if len(event.Targets) <= 0 {
+						ctx.InterruptFlow()
+						return
+					}
+
+					target, err := card.Player().GetCard(event.Targets[0])
+					if err != nil {
+						ctx.InterruptFlow()
+						logrus.Debug(err)
+						return
+					}
+
 					ctx.Override(func() {
-
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
-
-						cards := card.Player().Search(
-							card.Player().GetCreatures(),
-							"Select 1 of your creatures",
-							1,
-							1,
-							false)
-
-						for _, c := range cards {
-							c.AddCondition(func(card *match.Card, ctx *match.Context) {
-								fx.AttackModifier(card, ctx, 400)
-								ctx.Match().Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player().Name(), card.Name(), c.Name()))
-							})
-						}
+						target.AddCondition(func(card *match.Card, ctx *match.Context) {
+							fx.AttackModifier(card, ctx, 400)
+						})
 					})
 				}
 			},
@@ -62,19 +62,25 @@ func Fireball() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
+						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+							if len(event.Targets) <= 0 {
+								ctx.InterruptFlow()
+								return
+							}
 
-						cards := card.Player().Filter(
-							ctx.Match().Opponent(card.Player()).GetCreatures(),
-							"Select 1 of your opponent's creature with defense 200 or lesser",
-							1,
-							1,
-							false,
-							func(x *match.Card) bool { return x.GetDefence(ctx) <= 200 })
+							target, err := card.Player().GetCard(event.Targets[0])
+							if err != nil {
+								ctx.InterruptFlow()
+								logrus.Debug(err)
+								return
+							}
 
-						for _, c := range cards {
-							ctx.Match().Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name(), card.Name()))
+							if target.GetDefence(ctx) <= 200 {
+								ctx.Match().Destroy(target, card)
+							} else {
+								ctx.InterruptFlow()
+							}
 						}
 					})
 				}
@@ -98,12 +104,9 @@ func RainOfArrows() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
-
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
-
 						for _, c := range append(card.Player().GetCreatures(), ctx.Match().Opponent(card.Player()).GetCreatures()...) {
 							if c.GetDefence(ctx) <= 100 {
-								ctx.Match().Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name(), card.Name()))
+								ctx.Match().Destroy(c, card)
 							}
 						}
 					})
@@ -128,19 +131,25 @@ func MagmaGeyser() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
+						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+							if len(event.Targets) <= 0 {
+								ctx.InterruptFlow()
+								return
+							}
 
-						cards := card.Player().Filter(
-							ctx.Match().Opponent(card.Player()).GetCreatures(),
-							"Select 1 of your opponent's creature with defense 400 or lesser",
-							1,
-							1,
-							false,
-							func(x *match.Card) bool { return x.GetDefence(ctx) <= 400 })
+							target, err := card.Player().GetCard(event.Targets[0])
+							if err != nil {
+								ctx.InterruptFlow()
+								logrus.Debug(err)
+								return
+							}
 
-						for _, c := range cards {
-							ctx.Match().Destroy(c, card, fmt.Sprintf("%s was destroyed by %s", c.Name(), card.Name()))
+							if target.GetDefence(ctx) <= 400 {
+								ctx.Match().Destroy(target, card)
+							} else {
+								ctx.InterruptFlow()
+							}
 						}
 					})
 				}
@@ -164,18 +173,21 @@ func Degenerate() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
+						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+							if len(event.Targets) <= 0 {
+								ctx.InterruptFlow()
+								return
+							}
 
-						cards := card.Player().Search(
-							ctx.Match().Opponent(card.Player()).GetCreatures(),
-							"Select 1 of your opponent's creature",
-							1,
-							1,
-							false)
+							target, err := card.Player().GetCard(event.Targets[0])
+							if err != nil {
+								ctx.InterruptFlow()
+								logrus.Debug(err)
+								return
+							}
 
-						for _, c := range cards {
-							match.Devolve(c, card)
+							match.Devolve(target, card)
 						}
 					})
 				}
@@ -199,22 +211,24 @@ func LeechLife() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
+						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+							if len(event.Targets) <= 0 {
+								ctx.InterruptFlow()
+								return
+							}
 
-						cards := card.Player().Search(
-							card.Player().GetCreatures(),
-							"Select 1 of your creature",
-							1,
-							1,
-							false)
+							target, err := card.Player().GetCard(event.Targets[0])
+							if err != nil {
+								ctx.InterruptFlow()
+								logrus.Debug(err)
+								return
+							}
 
-						for _, c := range cards {
-							c.AddCondition(func(card *match.Card, ctx *match.Context) {
+							target.AddCondition(func(card *match.Card, ctx *match.Context) {
 								fx.AttackModifier(card, ctx, 200)
 							})
-							c.AddCondition(fx.Leech)
-							ctx.Match().Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player().Name(), card.Name(), c.Name()))
+							target.AddCondition(fx.Leech)
 						}
 					})
 				}
@@ -238,21 +252,22 @@ func RapidEvolution() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
+						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+							if len(event.Targets) <= 0 {
+								ctx.InterruptFlow()
+								return
+							}
 
-						cards := card.Player().Filter(
-							card.Player().GetCreatures(),
-							"Select 1 of your creature",
-							1,
-							1,
-							false,
-							func(x *match.Card) bool { return !x.Tapped() && x.HasHandler(fx.CantEvolve, ctx) })
+							target, err := card.Player().GetCard(event.Targets[0])
+							if err != nil {
+								ctx.InterruptFlow()
+								logrus.Debug(err)
+								return
+							}
 
-						for _, c := range cards {
-							c.RemoveCondition(fx.CantEvolve)
-							c.Tap(true)
-							ctx.Match().Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player().Name(), card.Name(), c.Name()))
+							target.Tap(true)
+							target.RemoveCondition(fx.CantEvolve)
 						}
 					})
 				}
@@ -276,8 +291,6 @@ func AirMail() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
-
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
 
 						cards, err := card.Player().Container(match.DECK)
 						if err != nil {
@@ -369,19 +382,21 @@ func Tailwind() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
+						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+							if len(event.Targets) <= 0 {
+								ctx.InterruptFlow()
+								return
+							}
 
-						cards := card.Player().Search(
-							card.Player().GetCreatures(),
-							"Select 1 of your creature",
-							1,
-							1,
-							false)
+							target, err := card.Player().GetCard(event.Targets[0])
+							if err != nil {
+								ctx.InterruptFlow()
+								logrus.Debug(err)
+								return
+							}
 
-						for _, c := range cards {
-							c.AddCondition(fx.CantBeBlocked)
-							ctx.Match().Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player().Name(), card.Name(), c.Name()))
+							target.AddCondition(fx.CantBeBlocked)
 						}
 					})
 				}
@@ -405,21 +420,23 @@ func Tornado() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
+						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+							if len(event.Targets) <= 0 {
+								ctx.InterruptFlow()
+								return
+							}
 
-						cards := card.Player().Search(
-							ctx.Match().Opponent(card.Player()).GetCreatures(),
-							"Select 1 of your opponent's creature",
-							1,
-							1,
-							false)
+							target, err := card.Player().GetCard(event.Targets[0])
+							if err != nil {
+								ctx.InterruptFlow()
+								logrus.Debug(err)
+								return
+							}
 
-						for _, c := range cards {
-							if err := c.MoveCard(match.DECK); err != nil {
+							if err := target.MoveCard(match.DECK); err != nil {
 								logrus.Debug(err)
 							}
-							ctx.Match().Chat("Server", fmt.Sprintf("%s was moved to %s %s by %s", c.Name(), c.Player().Name(), match.DECK, card.Name()))
 						}
 					})
 				}
@@ -443,21 +460,21 @@ func FrostBreath() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
+						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
+							if len(event.Targets) <= 0 {
+								ctx.InterruptFlow()
+								return
+							}
 
-						cards := card.Player().Filter(
-							ctx.Match().Opponent(card.Player()).GetCreatures(),
-							"Select 1 of your opponent's creature",
-							1,
-							1,
-							false,
-							func(x *match.Card) bool { return !x.Tapped() },
-						)
+							target, err := card.Player().GetCard(event.Targets[0])
+							if err != nil {
+								ctx.InterruptFlow()
+								logrus.Debug(err)
+								return
+							}
 
-						for _, c := range cards {
-							c.Tap(true)
-							ctx.Match().Chat("Server", fmt.Sprintf("%s used spell %s on %s", card.Player().Name(), card.Name(), c.Name()))
+							target.Tap(true)
 						}
 					})
 				}
@@ -481,7 +498,6 @@ func TidalWave() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
 						card.Player().DrawCards(2)
 					})
 				}
@@ -505,7 +521,6 @@ func Amrita() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
 						card.Player().Heal(card, ctx, 800)
 					})
 				}
@@ -529,7 +544,6 @@ func Blizzard() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.Override(func() {
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
 						for _, c := range ctx.Match().Opponent(card.Player()).GetCreatures() {
 							c.Tap(true)
 						}

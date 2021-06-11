@@ -45,6 +45,7 @@ type State struct {
 	MyTurn   bool        `json:"myTurn"`
 	Me       PlayerState `json:"me"`
 	Opponent PlayerState `json:"opponent"`
+	Event    interface{} `json:"event"`
 }
 
 // StateMessage is the message that should be sent to the client for state updates

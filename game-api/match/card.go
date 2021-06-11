@@ -245,21 +245,17 @@ func (c *Card) MoveCard(destination Container) error {
 		c.Detach()
 	}
 
-	c.player.match.HandleFx(NewContext(c.player.match, &CardMoved{
+	ctx := NewContext(c.player.match, &CardMoved{
 		ID:   c.id,
 		From: f,
 		To:   destination,
-	}))
+	})
+	c.player.match.HandleFx(ctx)
+	c.player.match.BroadcastState(ctx.event)
 
 	for _, card := range c.Attachments() {
-
 		card.attachedTo = c.attachedTo
-
-		card.player.match.HandleFx(NewContext(card.player.match, &CardMoved{
-			ID:   card.id,
-			From: card.zone,
-			To:   destination,
-		}))
+		c.MoveCard(destination)
 	}
 
 	return nil
