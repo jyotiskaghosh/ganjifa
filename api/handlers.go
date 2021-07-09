@@ -64,7 +64,6 @@ func SigninHandler(c *gin.Context) {
 	c.JSON(200, bson.M{"user": user, "token": session.Token})
 
 	// TODO: Remove expired/unneeded sessions from db
-
 }
 
 type signupReqBody struct {
@@ -134,7 +133,6 @@ func SignupHandler(c *gin.Context) {
 	}
 
 	c.JSON(200, bson.M{"user": user, "token": session.Token})
-
 }
 
 type matchReqBody struct {
@@ -165,7 +163,6 @@ func MatchHandler(c *gin.Context) {
 	m := match.New(reqBody.Name, user.Username, visible)
 
 	c.JSON(200, m.Info())
-
 }
 
 var upgrader = websocket.Upgrader{
@@ -209,7 +206,6 @@ func WS(c *gin.Context) {
 
 	// Handle the connection in a new goroutine to free up this memory
 	go s.Listen()
-
 }
 
 // CardsHandler returns a list of all the cards in the cache
@@ -255,7 +251,6 @@ func GetDecksHandler(c *gin.Context) {
 	}
 
 	c.JSON(200, decks)
-
 }
 
 type createDeckBody struct {
@@ -346,5 +341,4 @@ func CreateDeckHandler(c *gin.Context) {
 	}
 
 	c.Status(200)
-
 }

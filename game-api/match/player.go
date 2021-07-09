@@ -86,7 +86,7 @@ func newPlayer(match *Match, turn bool) *Player {
 func (p *Player) Name() string {
 	pr, err := p.match.playerRef(p)
 	if err != nil {
-		logrus.Debug(err)
+		logrus.Debugf("Couldn't get player's name: %s", err)
 		return "unknown"
 	}
 
@@ -150,7 +150,7 @@ func (p *Player) MapContainer(containerName Container, fn func(*Card)) {
 
 	cards, err := p.Container(containerName)
 	if err != nil {
-		logrus.Debug(err)
+		logrus.Debugf("MapContainer: %s", err)
 		return
 	}
 
@@ -224,7 +224,10 @@ func (p *Player) DrawCards(n int) {
 	}
 
 	for i := 0; i < n; i++ {
-		p.deck[i].MoveCard(HAND)
+		if err := p.deck[i].MoveCard(HAND); err != nil {
+			logrus.Debugf("Couldn't draw card: %s", err)
+			return
+		}
 	}
 
 	if n > 1 {
@@ -243,7 +246,7 @@ func (p *Player) HasCard(container Container, id string) bool {
 
 	c, err := p.Container(container)
 	if err != nil {
-		logrus.Debug(err)
+		logrus.Debugf("HasCard: %s", err)
 		return false
 	}
 
@@ -283,18 +286,14 @@ func (p *Player) Damage(source *Card, ctx *Context, health int) {
 			Health: health,
 		})
 
-	ctx.Override(func() {
+	ctx.ScheduleAfter(func() {
 		if event, ok := ctx.event.(*DamageEvent); ok {
 			p.life -= event.Health
+			ctx.match.Chat("Server", fmt.Sprintf("%s did %d damage to %s", source.name, health, p.Name()))
 		}
 	})
 
-	ctx.ScheduleAfter(func() {
-		ctx.match.Chat("Server", fmt.Sprintf("%s did %d damage to %s", source.name, health, p.Name()))
-	})
-
 	ctx.match.HandleFx(ctx)
-	ctx.match.BroadcastState(ctx.event)
 
 	if p.life <= 0 {
 		ctx.match.End(p.match.Opponent(p), fmt.Sprintf("%s has no life left", p.Name()))
@@ -315,18 +314,14 @@ func (p *Player) Heal(source *Card, ctx *Context, health int) {
 			Health: health,
 		})
 
-	ctx.Override(func() {
+	ctx.ScheduleAfter(func() {
 		if event, ok := ctx.event.(*HealEvent); ok {
 			p.life += event.Health
+			ctx.match.Chat("Server", fmt.Sprintf("%s healed %d life for %s", source.name, health, p.Name()))
 		}
 	})
 
-	ctx.ScheduleAfter(func() {
-		ctx.match.Chat("Server", fmt.Sprintf("%s healed %d life for %s", source.name, health, p.Name()))
-	})
-
 	ctx.match.HandleFx(ctx)
-	ctx.match.BroadcastState(ctx.event)
 }
 
 // denormalized returns a server.PlayerState
@@ -342,28 +337,6 @@ func (p *Player) denormalized() PlayerState {
 	}
 
 	return state
-}
-
-// denormalizeCards takes an array of *Card and returns an array of CardState
-func denormalizeCards(cards []*Card) []CardState {
-
-	arr := make([]CardState, 0)
-
-	for _, card := range cards {
-
-		cs := CardState{
-			ID:            card.id,
-			UID:           card.cardID,
-			Name:          card.name,
-			Civ:           card.civ,
-			Tapped:        card.tapped,
-			AttachedCards: denormalizeCards(card.Attachments()),
-		}
-
-		arr = append(arr, cs)
-	}
-
-	return arr
 }
 
 // hideCards takes an array of *Card and returns an array of empty CardStates
@@ -417,7 +390,7 @@ func (p *Player) Filter(cards []*Card, text string, min int, max int, cancellabl
 				for _, id := range action {
 					c, err := p.GetCard(id)
 					if err != nil {
-						logrus.Debug(err)
+						logrus.Debugf("Filter: %s", err)
 						return result
 					}
 					result = append(result, c)

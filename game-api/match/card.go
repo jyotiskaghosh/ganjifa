@@ -25,7 +25,7 @@ type Card struct {
 	handlers []HandlerFunc
 
 	zone       Container
-	tapped     bool
+	Tapped     bool
 	attachedTo *Card
 	conditions []HandlerFunc // Temporary handlers
 
@@ -61,13 +61,12 @@ func NewCard(p *Player, cardID int) (*Card, error) {
 
 	c, err := CardCtor(cardID)
 	if err != nil {
-		logrus.Warn(err)
+		logrus.Warnf("NewCard: %s", err)
 		return nil, err
 	}
 
 	id, err := shortid.Generate()
 	if err != nil {
-		logrus.Debug(err)
 		return nil, err
 	}
 
@@ -129,16 +128,6 @@ func (c *Card) Player() *Player {
 	return c.player
 }
 
-// Tap taps or untaps based on the bool value passed
-func (c *Card) Tap(tap bool) {
-	c.tapped = tap
-}
-
-// Tapped returns if card is tapped
-func (c *Card) Tapped() bool {
-	return c.tapped
-}
-
 // Conditions returns all conditions
 func (c *Card) Conditions() []HandlerFunc {
 	return c.conditions
@@ -180,7 +169,7 @@ func (c *Card) Attachments() []*Card {
 
 	cards, err := c.player.Container(SOUL)
 	if err != nil {
-		logrus.Debug(err)
+		logrus.Debugf("Attachments: %s", err)
 		return result
 	}
 
@@ -201,7 +190,8 @@ func (c *Card) AttachTo(card *Card) {
 	}
 
 	if err := c.MoveCard(SOUL); err != nil {
-		logrus.Debug(err)
+		logrus.Debugf("AttachTo: %s", err)
+		return
 	}
 	c.attachedTo = card
 }
@@ -216,14 +206,12 @@ func (c *Card) MoveCard(destination Container) error {
 
 	from, err := c.player.containerRef(c.zone)
 	if err != nil {
-		logrus.Debug(err)
-		return err
+		return fmt.Errorf("Couldn't move card %s(%s) to %s", c.id, c.name, destination)
 	}
 
 	to, err := c.player.containerRef(destination)
 	if err != nil {
-		logrus.Debug(err)
-		return err
+		return fmt.Errorf("Couldn't move card %s(%s) to %s", c.id, c.name, destination)
 	}
 
 	temp := make([]*Card, 0)
@@ -337,7 +325,6 @@ func (c *Card) GetHandlers(ctx *Context) []HandlerFunc {
 	ctx = NewContext(ctx.match, e)
 
 	for _, card := range ctx.match.CollectCards() {
-
 		for _, h := range append(card.handlers, card.conditions...) {
 
 			if ctx.cancel {
@@ -386,7 +373,7 @@ func (c *Card) RemoveEquipments() {
 	for _, c = range c.Attachments() {
 		if c.family == family.Equipment {
 			if err := c.MoveCard(GRAVEYARD); err != nil {
-				logrus.Debug(err)
+				logrus.Debugf("RemoveEquipments: %s", err)
 				return
 			}
 		}
@@ -403,11 +390,11 @@ func (c *Card) AmIPlayed(ctx *Context) bool {
 func (c *Card) EvolveTo(card *Card) {
 
 	if err := card.MoveCard(BATTLEZONE); err != nil {
-		logrus.Debug(err)
+		logrus.Debugf("EvolveTo: %s", err)
 		return
 	}
 
-	card.tapped = c.tapped
+	card.Tapped = c.Tapped
 
 	c.AttachTo(card)
 
@@ -416,4 +403,29 @@ func (c *Card) EvolveTo(card *Card) {
 	c.conditions, card.conditions = card.conditions, c.conditions
 
 	c.player.match.Chat("Server", fmt.Sprintf("%s evolved %s to %s", c.player.Name(), c.name, card.name))
+}
+
+// denormalizeCard returns the CardState of a card
+func (c *Card) denormalizeCard() CardState {
+	return CardState{
+		ID:            c.id,
+		UID:           c.cardID,
+		Name:          c.name,
+		Civ:           c.civ,
+		Tapped:        c.Tapped,
+		AttachedCards: denormalizeCards(c.Attachments()),
+	}
+}
+
+// denormalizeCards takes an array of *Card and returns an array of CardState
+func denormalizeCards(cards []*Card) []CardState {
+
+	arr := make([]CardState, 0)
+
+	for _, c := range cards {
+		cs := c.denormalizeCard()
+		arr = append(arr, cs)
+	}
+
+	return arr
 }

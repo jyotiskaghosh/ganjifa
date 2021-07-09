@@ -109,7 +109,6 @@ func New(matchName string, host string, visible bool) *Match {
 	logrus.Debugf("Created match %s", id)
 
 	return m
-
 }
 
 // Name just returns "match", obligatory for a hub
@@ -149,7 +148,6 @@ func UpdateMatchList() {
 	}
 
 	lobbyMatches <- update
-
 }
 
 func (m *Match) startTicker() {
@@ -214,7 +212,6 @@ func (m *Match) Dispose() {
 	logrus.Debugf("Closed match with id %s", m.id)
 
 	UpdateMatchList()
-
 }
 
 // Find returns a match with the specified id, or an error
@@ -304,7 +301,6 @@ func (m *Match) Parse(s *server.Socket, data []byte) {
 				Header: "choose_deck",
 				Decks:  decks,
 			})
-
 		}
 
 	case "chat":

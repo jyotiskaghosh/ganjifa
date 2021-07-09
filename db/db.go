@@ -30,7 +30,6 @@ func Connect(connectionString string, dbName string) {
 	conn = client.Database(dbName)
 
 	logrus.Info("Connected to database")
-
 }
 
 // Collection returns a mongodb collection handle
@@ -50,5 +49,4 @@ func GetUserForToken(token string) (User, error) {
 	}
 
 	return user, nil
-
 }

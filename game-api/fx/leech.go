@@ -20,7 +20,6 @@ func Leech(card *match.Card, ctx *match.Context) {
 	case *match.CreatureDestroyed:
 		if event.Source == card {
 			ctx.ScheduleAfter(func() {
-
 				card, err := ctx.Match().GetCard(event.ID)
 				if err != nil {
 					logrus.Debug(err)

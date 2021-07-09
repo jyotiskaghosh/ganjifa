@@ -82,7 +82,6 @@ func (l *Lobby) StartTicker() {
 				Broadcast(userCache)
 			}
 		}
-
 	}
 }
 
@@ -101,9 +100,7 @@ func ListenForMatchListUpdates() {
 		matchCache = update
 
 		Broadcast(update)
-
 	}
-
 }
 
 // Parse websocket messages
@@ -194,11 +191,8 @@ func (l *Lobby) Parse(s *server.Socket, data []byte) {
 			messages = append(messages, chatMsg)
 
 			Broadcast(toBroadcast)
-
 		}
-
 	}
-
 }
 
 func chat(s *server.Socket, message string) {
@@ -260,7 +254,6 @@ func handleChatCommand(s *server.Socket, command string) {
 			chat(s, "Matches: "+message)
 		}
 	}
-
 }
 
 // OnSocketClose is called when a socket disconnects
@@ -280,5 +273,4 @@ func (l *Lobby) OnSocketClose(s *server.Socket) {
 	}
 
 	subscribers = subscribersUpdate
-
 }

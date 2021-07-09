@@ -39,7 +39,6 @@ func CreateCardCache() {
 	}
 
 	logrus.Infof("Loaded %v cards into the cache from %v sets", len(register), len(cards.Sets))
-
 }
 
 // GetCache returns a copy of the cache
@@ -61,5 +60,4 @@ func CacheHas(uid int) bool {
 	}
 
 	return false
-
 }

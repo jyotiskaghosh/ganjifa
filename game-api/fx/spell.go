@@ -14,7 +14,7 @@ func Spell(card *match.Card, ctx *match.Context) {
 	case *match.PlayCardEvent:
 		if event.ID == card.ID() {
 			for _, creature := range card.Player().GetCreatures() {
-				if creature.HasCivilisation(card.Civ(), ctx) && card.GetRank(ctx) <= creature.GetRank(ctx) && !card.Tapped() {
+				if creature.HasCivilisation(card.Civ(), ctx) && card.GetRank(ctx) <= creature.GetRank(ctx) && !card.Tapped {
 					ctx.ScheduleAfter(func() {
 						if err := card.MoveCard(match.GRAVEYARD); err != nil {
 							logrus.Debug(err)
@@ -31,7 +31,7 @@ func Spell(card *match.Card, ctx *match.Context) {
 		if event.ID == card.ID() {
 
 			// Do this last in case any other cards want to interrupt the flow
-			ctx.Override(func() {
+			ctx.ScheduleAfter(func() {
 
 				playCtx := match.NewContext(ctx.Match(), &match.PlayCardEvent{
 					ID: card.ID(),

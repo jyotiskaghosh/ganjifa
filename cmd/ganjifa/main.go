@@ -37,5 +37,4 @@ func main() {
 	db.Connect(os.Getenv("mongo_uri"), os.Getenv("mongo_name"))
 
 	api.Start(os.Getenv("port"))
-
 }

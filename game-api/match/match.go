@@ -304,24 +304,14 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
-			var msg struct {
-				ID string `json:"id"`
-			}
+			msg := AttackCreature{}
+
 			if err := json.Unmarshal(data, &msg); err != nil {
 				logrus.Debug(err)
 				return
 			}
 
-			cards := pr.Player.Search(
-				m.Opponent(pr.Player).GetCreatures(),
-				"Select 1 of your opponent's creature to attack",
-				1,
-				1,
-				false)
-
-			for _, c := range cards {
-				m.AttackCreature(pr, msg.ID, c.id)
-			}
+			m.AttackCreature(pr, msg.ID, msg.TargetID)
 		}
 
 	default:
@@ -376,7 +366,7 @@ func (m *Match) WritePlayer(p *Player, msg interface{}) {
 
 	pr, err := m.playerRef(p)
 	if err != nil {
-		logrus.Debug(err)
+		logrus.Debug(fmt.Sprintf("error while writing to player: %s", err))
 		return
 	}
 
@@ -407,7 +397,7 @@ func (m *Match) Battle(attacker *Card, defender *Card, blocked bool) {
 	}
 
 	ctx := NewContext(m, &Battle{Attacker: attacker, Defender: defender, Blocked: blocked})
-	ctx.Override(func() {
+	ctx.ScheduleAfter(func() {
 		if attacker.GetAttack(ctx) > defender.GetDefence(ctx) {
 			m.Destroy(defender, attacker)
 		}
@@ -419,7 +409,13 @@ func (m *Match) Battle(attacker *Card, defender *Card, blocked bool) {
 func (m *Match) Destroy(card *Card, source *Card) {
 	ctx := NewContext(m, &CreatureDestroyed{ID: card.id, Source: source})
 	m.HandleFx(ctx)
-	m.BroadcastState(ctx.event)
+	m.BroadcastState(struct {
+		ID     string
+		Source CardState
+	}{
+		ID:     card.id,
+		Source: source.denormalizeCard(),
+	})
 }
 
 // CollectCards ...
@@ -457,26 +453,10 @@ func (m *Match) HandleFx(ctx *Context) {
 		}
 	}
 
-	for _, h := range ctx.preFxs {
-
+	for _, h := range ctx.postFxs {
 		if ctx.cancel {
 			return
 		}
-
-		h()
-	}
-
-	if ctx.cancel {
-		return
-	}
-	if ctx.mainFx != nil {
-		ctx.mainFx()
-	}
-	if ctx.cancel {
-		return
-	}
-
-	for _, h := range ctx.postFxs {
 		h()
 	}
 }

@@ -44,11 +44,11 @@ func Devolve(card *Card, src *Card) {
 	}
 
 	if err := cards[0].MoveCard(BATTLEZONE); err != nil {
-		logrus.Debug(err)
+		logrus.Debugf("Couldn't devolve: %s", err)
 		return
 	}
 
-	cards[0].tapped = card.tapped
+	cards[0].Tapped = card.Tapped
 
 	for _, card := range card.Attachments() {
 		card.AttachTo(cards[0])

@@ -17,7 +17,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 	case *match.UntapStep:
 		if card.Player().IsPlayerTurn() {
 			card.ClearConditions()
-			card.Tap(false)
+			card.Tapped = false
 		}
 
 	// On playing the card
@@ -39,7 +39,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 				}
 
 				// Do this last in case any other cards want to interrupt the flow
-				ctx.Override(func() {
+				ctx.ScheduleAfter(func() {
 					target.EvolveTo(card)
 					card.AddCondition(CantEvolve)
 				})
@@ -47,7 +47,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 			} else if card.GetRank(ctx) == 0 {
 
 				// Do this last in case any other cards want to interrupt the flow
-				ctx.Override(func() {
+				ctx.ScheduleAfter(func() {
 					if err := card.MoveCard(match.BATTLEZONE); err != nil {
 						logrus.Debug(err)
 						return
@@ -61,13 +61,13 @@ func Creature(card *match.Card, ctx *match.Context) {
 	case *match.AttackPlayer:
 		if event.ID == card.ID() {
 
-			if card.Tapped() || card.Zone() != match.BATTLEZONE || card.GetAttack(ctx) <= 0 {
+			if card.Tapped || card.Zone() != match.BATTLEZONE || card.GetAttack(ctx) <= 0 {
 				ctx.InterruptFlow()
 				return
 			}
 
 			// Do this last in case any other cards want to interrupt the flow
-			ctx.Override(func() {
+			ctx.ScheduleAfter(func() {
 
 				opponent := ctx.Match().Opponent(card.Player())
 
@@ -78,7 +78,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 				}
 
 				defer func() {
-					card.Tap(true)
+					card.Tapped = true
 				}()
 
 				cards := opponent.Filter(
@@ -139,7 +139,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 	case *match.AttackCreature:
 		if event.ID == card.ID() {
 
-			if card.Tapped() || card.Zone() != match.BATTLEZONE || card.GetAttack(ctx) <= 0 {
+			if card.Tapped || card.Zone() != match.BATTLEZONE || card.GetAttack(ctx) <= 0 {
 				ctx.InterruptFlow()
 				return
 			}
@@ -158,7 +158,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 			}
 
 			// Do this last in case any other cards want to interrupt the flow
-			ctx.Override(func() {
+			ctx.ScheduleAfter(func() {
 
 				trapzone, err := ctx.Match().Opponent(card.Player()).Container(match.TRAPZONE)
 				if err != nil {
@@ -167,7 +167,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 				}
 
 				defer func() {
-					card.Tap(true)
+					card.Tapped = true
 				}()
 
 				cards := opponent.Filter(
@@ -233,14 +233,14 @@ func Creature(card *match.Card, ctx *match.Context) {
 	case *match.BlockEvent:
 		if event.ID == card.ID() {
 
-			if card.Tapped() || card.Zone() != match.BATTLEZONE || card.GetDefence(ctx) <= 0 {
+			if card.Tapped || card.Zone() != match.BATTLEZONE || card.GetDefence(ctx) <= 0 {
 				ctx.InterruptFlow()
 				return
 			}
 
 			// Do this last in case any other cards want to interrupt the flow
-			ctx.Override(func() {
-				card.Tap(true)
+			ctx.ScheduleAfter(func() {
+				card.Tapped = true
 				ctx.Match().Battle(event.Attacker, card, true)
 			})
 		}
@@ -255,7 +255,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 			}
 
 			// Do this last in case any other cards want to interrupt the flow
-			ctx.Override(func() {
+			ctx.ScheduleAfter(func() {
 				if err := card.MoveCard(match.GRAVEYARD); err != nil {
 					logrus.Debug(err)
 				}

@@ -6,8 +6,6 @@ type Context struct {
 	match   *Match
 	event   interface{}
 	cancel  bool
-	preFxs  []func()
-	mainFx  func()
 	postFxs []func()
 }
 
@@ -33,16 +31,6 @@ func (ctx *Context) Match() *Match {
 // Event ...
 func (ctx *Context) Event() interface{} {
 	return ctx.event
-}
-
-// ScheduleBefore allows you to run the logic before the main logic,
-func (ctx *Context) ScheduleBefore(handlers ...func()) {
-	ctx.preFxs = append(ctx.preFxs, handlers...)
-}
-
-// Override holds or overrides the main logic,
-func (ctx *Context) Override(handler func()) {
-	ctx.mainFx = handler
 }
 
 // ScheduleAfter allows you to run the logic at the end of the context flow,

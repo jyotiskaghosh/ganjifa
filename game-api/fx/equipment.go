@@ -32,7 +32,7 @@ func Equipment(card *match.Card, ctx *match.Context) {
 			}
 
 			// Do this last in case any other cards want to interrupt the flow
-			ctx.Override(func() {
+			ctx.ScheduleAfter(func() {
 				target.RemoveEquipments()
 				card.AttachTo(target)
 			})
@@ -43,7 +43,7 @@ func Equipment(card *match.Card, ctx *match.Context) {
 		if event.ID == card.ID() {
 
 			// Do this last in case any other cards want to interrupt the flow
-			ctx.Override(func() {
+			ctx.ScheduleAfter(func() {
 
 				playCtx := match.NewContext(ctx.Match(), &match.PlayCardEvent{
 					ID: card.ID(),

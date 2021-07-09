@@ -9,7 +9,7 @@ func Ambush(card *match.Card, ctx *match.Context) {
 	if event, ok := ctx.Event().(*match.TrapEvent); ok && event.ID == card.ID() {
 
 		// Do this last in case any other cards want to interrupt the flow
-		ctx.Override(func() {
+		ctx.ScheduleAfter(func() {
 
 			playCtx := match.NewContext(ctx.Match(), &match.PlayCardEvent{
 				ID: card.ID(),
@@ -20,16 +20,13 @@ func Ambush(card *match.Card, ctx *match.Context) {
 				ctx.InterruptFlow()
 				return
 			}
-		})
 
-		ctx.ScheduleAfter(func() {
-
-			if card.Tapped() || card.Zone() != match.BATTLEZONE {
+			if card.Tapped || card.Zone() != match.BATTLEZONE {
 				return
 			}
 
 			ctx.Match().Battle(card, event.Attacker, false)
-			card.Tap(true)
+			card.Tapped = true
 		})
 	}
 }

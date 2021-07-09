@@ -20,7 +20,6 @@ func EnergySurge() *match.Card {
 		Civ:    civ.AGNI,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
@@ -36,13 +35,14 @@ func EnergySurge() *match.Card {
 						return
 					}
 
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						target.AddCondition(func(card *match.Card, ctx *match.Context) {
 							fx.AttackModifier(card, ctx, 400)
 						})
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -58,10 +58,9 @@ func Fireball() *match.Card {
 		Civ:    civ.AGNI,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
 							if len(event.Targets) <= 0 {
@@ -85,6 +84,7 @@ func Fireball() *match.Card {
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -100,10 +100,9 @@ func RainOfArrows() *match.Card {
 		Civ:    civ.AGNI,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						for _, c := range append(card.Player().GetCreatures(), ctx.Match().Opponent(card.Player()).GetCreatures()...) {
 							if c.GetDefence(ctx) <= 100 {
 								ctx.Match().Destroy(c, card)
@@ -112,6 +111,7 @@ func RainOfArrows() *match.Card {
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -127,10 +127,9 @@ func MagmaGeyser() *match.Card {
 		Civ:    civ.AGNI,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
 							if len(event.Targets) <= 0 {
@@ -154,6 +153,7 @@ func MagmaGeyser() *match.Card {
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -169,10 +169,9 @@ func Degenerate() *match.Card {
 		Civ:    civ.PRITHVI,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
 							if len(event.Targets) <= 0 {
@@ -192,6 +191,7 @@ func Degenerate() *match.Card {
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -207,10 +207,9 @@ func LeechLife() *match.Card {
 		Civ:    civ.PRITHVI,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
 							if len(event.Targets) <= 0 {
@@ -233,6 +232,7 @@ func LeechLife() *match.Card {
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -248,10 +248,9 @@ func RapidEvolution() *match.Card {
 		Civ:    civ.PRITHVI,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
 							if len(event.Targets) <= 0 {
@@ -266,12 +265,13 @@ func RapidEvolution() *match.Card {
 								return
 							}
 
-							target.Tap(true)
+							target.Tapped = true
 							target.RemoveCondition(fx.CantEvolve)
 						}
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -287,10 +287,9 @@ func AirMail() *match.Card {
 		Civ:    civ.VAYU,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 
 						cards, err := card.Player().Container(match.DECK)
 						if err != nil {
@@ -318,6 +317,7 @@ func AirMail() *match.Card {
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -333,10 +333,9 @@ func Whirlwind() *match.Card {
 		Civ:    civ.VAYU,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 
 						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
 
@@ -363,6 +362,7 @@ func Whirlwind() *match.Card {
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -378,10 +378,9 @@ func Tailwind() *match.Card {
 		Civ:    civ.VAYU,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
 							if len(event.Targets) <= 0 {
@@ -401,6 +400,7 @@ func Tailwind() *match.Card {
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -416,10 +416,9 @@ func Tornado() *match.Card {
 		Civ:    civ.VAYU,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
 							if len(event.Targets) <= 0 {
@@ -441,6 +440,7 @@ func Tornado() *match.Card {
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -456,10 +456,9 @@ func FrostBreath() *match.Card {
 		Civ:    civ.APAS,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
 
 							if len(event.Targets) <= 0 {
@@ -474,11 +473,12 @@ func FrostBreath() *match.Card {
 								return
 							}
 
-							target.Tap(true)
+							target.Tapped = true
 						}
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -494,14 +494,14 @@ func TidalWave() *match.Card {
 		Civ:    civ.APAS,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						card.Player().DrawCards(2)
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -517,14 +517,14 @@ func Amrita() *match.Card {
 		Civ:    civ.APAS,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						card.Player().Heal(card, ctx, 800)
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
@@ -540,16 +540,16 @@ func Blizzard() *match.Card {
 		Civ:    civ.APAS,
 		Family: family.Spell,
 		Handlers: []match.HandlerFunc{
-			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
-					ctx.Override(func() {
+					ctx.ScheduleAfter(func() {
 						for _, c := range ctx.Match().Opponent(card.Player()).GetCreatures() {
-							c.Tap(true)
+							c.Tapped = true
 						}
 					})
 				}
 			},
+			fx.Spell,
 		},
 	}
 
