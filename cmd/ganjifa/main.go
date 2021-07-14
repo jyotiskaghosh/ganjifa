@@ -16,7 +16,6 @@ import (
 )
 
 func main() {
-
 	logrus.SetFormatter(&logrus.JSONFormatter{})
 	logrus.SetLevel(logrus.DebugLevel)
 

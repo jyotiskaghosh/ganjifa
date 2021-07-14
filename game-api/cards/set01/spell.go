@@ -13,7 +13,6 @@ import (
 
 // EnergySurge ...
 func EnergySurge() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Energy Surge",
 		Rank:   0,
@@ -22,7 +21,6 @@ func EnergySurge() *match.Card {
 		Handlers: []match.HandlerFunc{
 			func(card *match.Card, ctx *match.Context) {
 				if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-
 					if len(event.Targets) <= 0 {
 						ctx.InterruptFlow()
 						return
@@ -51,7 +49,6 @@ func EnergySurge() *match.Card {
 
 // Fireball ...
 func Fireball() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Fireball",
 		Rank:   0,
@@ -62,7 +59,6 @@ func Fireball() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-
 							if len(event.Targets) <= 0 {
 								ctx.InterruptFlow()
 								return
@@ -93,7 +89,6 @@ func Fireball() *match.Card {
 
 // RainOfArrows ...
 func RainOfArrows() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Rain Of Arrows",
 		Rank:   0,
@@ -120,7 +115,6 @@ func RainOfArrows() *match.Card {
 
 // MagmaGeyser ...
 func MagmaGeyser() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "MagmaGeyser",
 		Rank:   1,
@@ -131,7 +125,6 @@ func MagmaGeyser() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-
 							if len(event.Targets) <= 0 {
 								ctx.InterruptFlow()
 								return
@@ -162,7 +155,6 @@ func MagmaGeyser() *match.Card {
 
 // Degenerate ...
 func Degenerate() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Degenerate",
 		Rank:   0,
@@ -173,7 +165,6 @@ func Degenerate() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-
 							if len(event.Targets) <= 0 {
 								ctx.InterruptFlow()
 								return
@@ -200,7 +191,6 @@ func Degenerate() *match.Card {
 
 // LeechLife ...
 func LeechLife() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Leech Life",
 		Rank:   0,
@@ -211,7 +201,6 @@ func LeechLife() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-
 							if len(event.Targets) <= 0 {
 								ctx.InterruptFlow()
 								return
@@ -241,7 +230,6 @@ func LeechLife() *match.Card {
 
 // RapidEvolution ...
 func RapidEvolution() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Rapid Evolution",
 		Rank:   0,
@@ -252,7 +240,6 @@ func RapidEvolution() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-
 							if len(event.Targets) <= 0 {
 								ctx.InterruptFlow()
 								return
@@ -280,7 +267,6 @@ func RapidEvolution() *match.Card {
 
 // AirMail ...
 func AirMail() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Air Mail",
 		Rank:   0,
@@ -290,7 +276,6 @@ func AirMail() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
-
 						cards, err := card.Player().Container(match.DECK)
 						if err != nil {
 							ctx.InterruptFlow()
@@ -326,7 +311,6 @@ func AirMail() *match.Card {
 
 // Whirlwind ...
 func Whirlwind() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Whirlwind",
 		Rank:   0,
@@ -336,7 +320,6 @@ func Whirlwind() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
-
 						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
 
 						cards, err := ctx.Match().Opponent(card.Player()).Container(match.TRAPZONE)
@@ -371,7 +354,6 @@ func Whirlwind() *match.Card {
 
 // Tailwind ...
 func Tailwind() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Tailwind",
 		Rank:   0,
@@ -382,7 +364,6 @@ func Tailwind() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-
 							if len(event.Targets) <= 0 {
 								ctx.InterruptFlow()
 								return
@@ -409,7 +390,6 @@ func Tailwind() *match.Card {
 
 // Tornado ...
 func Tornado() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Tornado",
 		Rank:   1,
@@ -420,7 +400,6 @@ func Tornado() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-
 							if len(event.Targets) <= 0 {
 								ctx.InterruptFlow()
 								return
@@ -449,7 +428,6 @@ func Tornado() *match.Card {
 
 // FrostBreath ...
 func FrostBreath() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "FrostBreath",
 		Rank:   0,
@@ -460,7 +438,6 @@ func FrostBreath() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-
 							if len(event.Targets) <= 0 {
 								ctx.InterruptFlow()
 								return
@@ -487,7 +464,6 @@ func FrostBreath() *match.Card {
 
 // TidalWave ...
 func TidalWave() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Tidal Wave",
 		Rank:   1,
@@ -510,7 +486,6 @@ func TidalWave() *match.Card {
 
 // Amrita ...
 func Amrita() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Amrita",
 		Rank:   1,
@@ -533,7 +508,6 @@ func Amrita() *match.Card {
 
 // Blizzard ...
 func Blizzard() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Blizzard",
 		Rank:   2,

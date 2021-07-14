@@ -12,7 +12,6 @@ import (
 
 // Pipilika ...
 func Pipilika() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Pipilika",
 		Rank:    0,
@@ -37,7 +36,6 @@ func Pipilika() *match.Card {
 
 // Masaka ...
 func Masaka() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Masaka",
 		Rank:    0,
@@ -56,7 +54,6 @@ func Masaka() *match.Card {
 
 // MahisiPipilika ...
 func MahisiPipilika() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Mahisi Pipilika",
 		Rank:    1,
@@ -66,13 +63,11 @@ func MahisiPipilika() *match.Card {
 		Handlers: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
-
 				if card.Zone() != match.BATTLEZONE {
 					return
 				}
 
 				if _, ok := ctx.Event().(*match.BeginTurnStep); ok && card.Player().IsPlayerTurn() {
-
 					cards, err := card.Player().Container(match.DECK)
 					if err != nil {
 						ctx.InterruptFlow()
@@ -94,6 +89,7 @@ func MahisiPipilika() *match.Card {
 							logrus.Debug(err)
 							return
 						}
+
 						ctx.Match().Chat("Server", fmt.Sprintf("%s was moved from %s's deck to their hand", c.Name(), card.Player().Name()))
 					}
 
@@ -101,7 +97,6 @@ func MahisiPipilika() *match.Card {
 				}
 
 				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.ID != card.ID() {
-
 					card, err := card.Player().GetCard(event.ID)
 					if err != nil {
 						logrus.Debug(err)
@@ -114,7 +109,6 @@ func MahisiPipilika() *match.Card {
 				}
 
 				if event, ok := ctx.Event().(*match.GetDefenceEvent); ok && event.ID != card.ID() {
-
 					card, err := card.Player().GetCard(event.ID)
 					if err != nil {
 						logrus.Debug(err)

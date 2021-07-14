@@ -5,8 +5,7 @@ import (
 )
 
 // EndTurnEvent is fired when a player attempts to end their turn
-type EndTurnEvent struct {
-}
+type EndTurnEvent struct{}
 
 // PlayCardEvent is fired when the player attempts to play a card
 type PlayCardEvent struct {

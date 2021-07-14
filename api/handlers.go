@@ -26,7 +26,6 @@ type signinReqBody struct {
 
 // SigninHandler handles signin requests
 func SigninHandler(c *gin.Context) {
-
 	var reqBody signinReqBody
 	if err := c.ShouldBindJSON(&reqBody); err != nil {
 		c.Status(400)
@@ -74,7 +73,6 @@ type signupReqBody struct {
 
 // SignupHandler handles signup requests
 func SignupHandler(c *gin.Context) {
-
 	// TODO: recaptcha
 
 	var reqBody signupReqBody
@@ -142,7 +140,6 @@ type matchReqBody struct {
 
 // MatchHandler handles creation of new mathes
 func MatchHandler(c *gin.Context) {
-
 	user, err := db.GetUserForToken(c.GetHeader("Authorization"))
 	if err != nil {
 		c.Status(401)
@@ -173,17 +170,13 @@ var upgrader = websocket.Upgrader{
 
 // WS handles websocket upgrade
 func WS(c *gin.Context) {
-
 	hubID := c.Param("hub")
 
 	var hub server.Hub
 
 	if hubID == "lobby" {
-
 		hub = game.GetLobby()
-
 	} else {
-
 		m, err := match.Find(hubID)
 
 		if err != nil {
@@ -192,7 +185,6 @@ func WS(c *gin.Context) {
 		}
 
 		hub = m
-
 	}
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
@@ -239,7 +231,6 @@ func GetDecksHandler(c *gin.Context) {
 	decks := make([]db.Deck, 0)
 
 	for cur.Next(context.TODO()) {
-
 		var deck db.Deck
 
 		if err := cur.Decode(&deck); err != nil {
@@ -247,7 +238,6 @@ func GetDecksHandler(c *gin.Context) {
 		}
 
 		decks = append(decks, deck)
-
 	}
 
 	c.JSON(200, decks)
@@ -262,7 +252,6 @@ type createDeckBody struct {
 
 // CreateDeckHandler handles creating/editing decks
 func CreateDeckHandler(c *gin.Context) {
-
 	user, err := db.GetUserForToken(c.GetHeader("Authorization"))
 	if err != nil {
 		c.Status(401)
@@ -290,7 +279,6 @@ func CreateDeckHandler(c *gin.Context) {
 	collection := db.Collection("decks")
 
 	if len(reqBody.UID) < 1 {
-
 		// New deck
 
 		decksCount, err := collection.CountDocuments(context.TODO(), bson.M{"owner": user.UID})
@@ -321,9 +309,7 @@ func CreateDeckHandler(c *gin.Context) {
 			c.Status(500)
 			return
 		}
-
 	} else {
-
 		// Edit deck
 
 		_, err := collection.UpdateOne(
@@ -337,7 +323,6 @@ func CreateDeckHandler(c *gin.Context) {
 			c.Status(500)
 			return
 		}
-
 	}
 
 	c.Status(200)

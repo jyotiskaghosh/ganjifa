@@ -20,5 +20,6 @@ func CardCtor(id int) (*Card, error) {
 	if ctors[id] == nil {
 		return nil, errors.New("Card ctor does not exist for id " + strconv.Itoa(id))
 	}
+
 	return ctors[id](), nil
 }

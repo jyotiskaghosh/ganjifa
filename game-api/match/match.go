@@ -25,19 +25,15 @@ type Match struct {
 
 // New returns a new match object
 func New() *Match {
-
-	m := &Match{
+	return &Match{
 		mutex: &sync.Mutex{},
 		wait:  true,
 		Quit:  make(chan bool),
 	}
-
-	return m
 }
 
 // playerRef returns the player ref for a given player
 func (m *Match) playerRef(p *Player) (*PlayerReference, error) {
-
 	if m.player1.Player == p {
 		return m.player1, nil
 	}
@@ -51,7 +47,6 @@ func (m *Match) playerRef(p *Player) (*PlayerReference, error) {
 
 // PlayerForWriter returns the player ref for a given output or an error if the output is not p1 or p2
 func (m *Match) PlayerForWriter(w Writer) (*PlayerReference, error) {
-
 	if m.player1.Writer == w {
 		return m.player1, nil
 	}
@@ -75,34 +70,28 @@ func (m *Match) Winner(pr *PlayerReference) bool {
 
 // AddPlayer adds a new player
 func (m *Match) AddPlayer(w Writer) (*PlayerReference, error) {
-
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
 	var pr *PlayerReference
 
 	switch {
-
 	case m.player1 == nil:
 		{
-			pr = &PlayerReference{
+			m.player1 = &PlayerReference{
 				Name:   "player1",
 				Player: newPlayer(m, true),
 				Writer: w,
 			}
-			m.player1 = pr
 		}
-
 	case m.player2 == nil:
 		{
-			pr = &PlayerReference{
+			m.player2 = &PlayerReference{
 				Name:   "player2",
 				Player: newPlayer(m, false),
 				Writer: w,
 			}
-			m.player2 = pr
 		}
-
 	default:
 		return nil, errors.New("players at max capacity")
 	}
@@ -112,7 +101,6 @@ func (m *Match) AddPlayer(w Writer) (*PlayerReference, error) {
 
 // Parse processes the data provided by player
 func (m *Match) Parse(pr *PlayerReference, data []byte) {
-
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Warnf("Recovered from parsing message in match. %v", r)
@@ -125,7 +113,6 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 	}
 
 	switch msg.Header {
-
 	case "choose_deck":
 		{
 			if m.started {
@@ -149,7 +136,6 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				m.start()
 			}
 		}
-
 	case "end_turn":
 		{
 			if !pr.Player.turn {
@@ -166,7 +152,6 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 
 			m.EndTurn()
 		}
-
 	case "set_card":
 		{
 			if !pr.Player.turn {
@@ -200,7 +185,6 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 		}
-
 	case "play_card":
 		{
 			if !pr.Player.turn {
@@ -223,10 +207,9 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 
 			if ok := pr.Player.HasCard(HAND, msg.ID); ok &&
 				AssertCardsIn(append(pr.Player.GetCreatures(), m.Opponent(pr.Player).GetCreatures()...), msg.Targets) {
-				m.PlayCard(msg.ID, msg.Targets)
+					m.PlayCard(msg.ID, msg.Targets)
 			}
 		}
-
 	case "action":
 		{
 			var msg struct {
@@ -249,12 +232,10 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 
 			pr.Player.Action <- cards
 		}
-
 	case "cancel":
 		{
 			pr.Player.Cancel <- true
 		}
-
 	case "attack_player":
 		{
 			if !pr.Player.turn {
@@ -284,7 +265,6 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 
 			m.AttackPlayer(pr, msg.ID)
 		}
-
 	case "attack_creature":
 		{
 			if !pr.Player.turn {
@@ -313,17 +293,13 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 
 			m.AttackCreature(pr, msg.ID, msg.TargetID)
 		}
-
 	default:
-		{
-			logrus.Debugf("Received message in incorrect format: %v", string(data))
-		}
+		logrus.Debugf("Received message in incorrect format: %v", string(data))
 	}
 }
 
 // Opponent returns the opponent of the given player
 func (m *Match) Opponent(p *Player) *Player {
-
 	if m.player1.Player == p {
 		return m.player2.Player
 	}
@@ -333,7 +309,6 @@ func (m *Match) Opponent(p *Player) *Player {
 
 // CurrentPlayer returns the turn player
 func (m *Match) CurrentPlayer() *PlayerReference {
-
 	if m.player1.Player.turn {
 		return m.player1
 	}
@@ -343,7 +318,6 @@ func (m *Match) CurrentPlayer() *PlayerReference {
 
 // Chat sends a chat message with color
 func (m *Match) Chat(sender string, message string) {
-
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Warnf("Recovered from panic during sending chat message. %v", r)
@@ -363,7 +337,6 @@ func (m *Match) Chat(sender string, message string) {
 
 // WritePlayer sends a message to a player
 func (m *Match) WritePlayer(p *Player, msg interface{}) {
-
 	pr, err := m.playerRef(p)
 	if err != nil {
 		logrus.Debug(fmt.Sprintf("error while writing to player: %s", err))
@@ -391,7 +364,6 @@ func (m *Match) WarnPlayer(p *Player, message string) {
 
 // Battle handles a battle between two creatures
 func (m *Match) Battle(attacker *Card, defender *Card, blocked bool) {
-
 	if attacker.zone != BATTLEZONE || defender.zone != BATTLEZONE {
 		return
 	}
@@ -409,6 +381,7 @@ func (m *Match) Battle(attacker *Card, defender *Card, blocked bool) {
 func (m *Match) Destroy(card *Card, source *Card) {
 	ctx := NewContext(m, &CreatureDestroyed{ID: card.id, Source: source})
 	m.HandleFx(ctx)
+
 	m.BroadcastState(struct {
 		ID     string
 		Source CardState
@@ -420,7 +393,6 @@ func (m *Match) Destroy(card *Card, source *Card) {
 
 // CollectCards ...
 func (m *Match) CollectCards() []*Card {
-
 	players := make([]*PlayerReference, 0)
 
 	// The player in which turn it is is to be handled first
@@ -446,7 +418,6 @@ func (m *Match) CollectCards() []*Card {
 
 // HandleFx ...
 func (m *Match) HandleFx(ctx *Context) {
-
 	for _, c := range m.CollectCards() {
 		for _, h := range c.GetHandlers(ctx) {
 			h(c, ctx)
@@ -457,13 +428,13 @@ func (m *Match) HandleFx(ctx *Context) {
 		if ctx.cancel {
 			return
 		}
+
 		h()
 	}
 }
 
 // BroadcastState sends the current game's state to both players, hiding the opponent's hand
 func (m *Match) BroadcastState(event interface{}) {
-
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Warnf("Recovered from panic during sending state update. %v", r)
@@ -505,12 +476,12 @@ func (m *Match) BroadcastState(event interface{}) {
 
 // End ends the match
 func (m *Match) End(winner *Player, reason string) {
-
 	logrus.Debugf("Attempting to end match")
 
 	m.Chat("server", fmt.Sprintf("%s won the match, %s", winner.Name(), reason))
 
 	m.winner = winner
+
 	m.Quit <- true
 }
 
@@ -550,7 +521,6 @@ func (m *Match) changeCurrentPlayer() {
 
 // start starts the match
 func (m *Match) start() {
-
 	defer m.waiting(false)
 
 	m.mutex.Lock()
@@ -574,7 +544,6 @@ func (m *Match) start() {
 
 // waiting assigns bool value to m.wait
 func (m *Match) waiting(wait bool) {
-
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -583,7 +552,6 @@ func (m *Match) waiting(wait bool) {
 
 // beginNewTurn starts a new turn
 func (m *Match) beginNewTurn() {
-
 	m.changeCurrentPlayer()
 	m.CurrentPlayer().Player.turnNo++
 
@@ -594,7 +562,6 @@ func (m *Match) beginNewTurn() {
 
 // untapStep ...
 func (m *Match) untapStep() {
-
 	m.HandleFx(NewContext(m, &UntapStep{}))
 
 	m.startOfTurnStep()
@@ -602,21 +569,21 @@ func (m *Match) untapStep() {
 
 // startOfTurnStep ...
 func (m *Match) startOfTurnStep() {
-
 	ctx := NewContext(m, &StartOfTurnStep{})
 	m.HandleFx(ctx)
 
 	m.drawStep()
+
 	m.BroadcastState(ctx.event)
 }
 
 // drawStep ...
 func (m *Match) drawStep() {
-
 	ctx := NewContext(m, &DrawStep{})
 	m.HandleFx(ctx)
 
 	p := m.CurrentPlayer().Player
+
 	p.DrawCards(1)
 
 	m.BroadcastState(ctx.event)
@@ -624,9 +591,9 @@ func (m *Match) drawStep() {
 
 // endStep ...
 func (m *Match) endStep() {
-
 	ctx := NewContext(m, &EndStep{})
 	m.HandleFx(ctx)
+
 	m.BroadcastState(ctx.event)
 
 	m.beginNewTurn()
@@ -637,6 +604,7 @@ func (m *Match) endStep() {
 func (m *Match) EndTurn() {
 	ctx := NewContext(m, &EndTurnEvent{})
 	m.HandleFx(ctx)
+
 	if !ctx.cancel {
 		m.endStep()
 	}
@@ -649,6 +617,7 @@ func (m *Match) PlayCard(id string, targets []string) {
 		Targets: targets,
 	})
 	m.HandleFx(ctx)
+
 	m.BroadcastState(ctx.event)
 }
 
@@ -658,6 +627,7 @@ func (m *Match) AttackPlayer(pr *PlayerReference, id string) {
 		ID: id,
 	})
 	m.HandleFx(ctx)
+
 	m.BroadcastState(ctx.event)
 }
 
@@ -668,6 +638,7 @@ func (m *Match) AttackCreature(pr *PlayerReference, id string, targetID string) 
 		TargetID: targetID,
 	})
 	m.HandleFx(ctx)
+
 	m.BroadcastState(ctx.event)
 }
 
@@ -677,5 +648,6 @@ func (m *Match) GetCard(id string) (*Card, error) {
 	if err != nil {
 		return m.player2.Player.GetCard(id)
 	}
+
 	return c, nil
 }

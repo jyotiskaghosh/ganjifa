@@ -9,7 +9,6 @@ import (
 
 // Matsyaka ...
 func Matsyaka() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Matsyaka",
 		Rank:    0,
@@ -41,7 +40,6 @@ func Matsyaka() *match.Card {
 
 // DeadlyZebrafish ...
 func DeadlyZebrafish() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Deadly Zebrafish",
 		Rank:    0,
@@ -60,7 +58,6 @@ func DeadlyZebrafish() *match.Card {
 
 // TorpedoingBarracuda ...
 func TorpedoingBarracuda() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Torpedoing Barracuda",
 		Rank:    1,

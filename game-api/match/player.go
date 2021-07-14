@@ -64,8 +64,7 @@ type Player struct {
 
 // newPlayer returns a new player
 func newPlayer(match *Match, turn bool) *Player {
-
-	p := &Player{
+	return &Player{
 		deck:       make([]*Card, 0),
 		hand:       make([]*Card, 0),
 		graveyard:  make([]*Card, 0),
@@ -78,8 +77,6 @@ func newPlayer(match *Match, turn bool) *Player {
 		turn:       turn,
 		match:      match,
 	}
-
-	return p
 }
 
 // Name returns the username of the player
@@ -105,7 +102,6 @@ func (p *Player) Turn() int {
 
 // containerRef returns a pointer to one of the player's card zones based on the specified string
 func (p *Player) containerRef(c Container) (*[]*Card, error) {
-
 	switch c {
 	case DECK:
 		return &p.deck, nil
@@ -126,7 +122,6 @@ func (p *Player) containerRef(c Container) (*[]*Card, error) {
 
 // Container returns a copy of one of the player's card zones based on the specified string
 func (p *Player) Container(c Container) ([]*Card, error) {
-
 	switch c {
 	case DECK:
 		return p.deck, nil
@@ -147,7 +142,6 @@ func (p *Player) Container(c Container) ([]*Card, error) {
 
 // MapContainer performs the given action on all cards in the specified container
 func (p *Player) MapContainer(containerName Container, fn func(*Card)) {
-
 	cards, err := p.Container(containerName)
 	if err != nil {
 		logrus.Debugf("MapContainer: %s", err)
@@ -161,11 +155,9 @@ func (p *Player) MapContainer(containerName Container, fn func(*Card)) {
 
 // createDeck initializes a new deck from a list of card ids
 func (p *Player) createDeck(cards []int) error {
-
 	deck := make([]*Card, 0)
 
 	for _, card := range cards {
-
 		c, err := NewCard(p, card)
 		if err != nil {
 			logrus.Warnf("Failed to create card with id %d", card)
@@ -202,7 +194,6 @@ func (p *Player) ShuffleDeck() {
 
 // PeekDeck returns references to the next n cards in the deck
 func (p *Player) PeekDeck(n int) []*Card {
-
 	result := make([]*Card, 0)
 
 	if len(p.deck) < n {
@@ -218,7 +209,6 @@ func (p *Player) PeekDeck(n int) []*Card {
 
 // DrawCards moves n cards from the players deck to their hand
 func (p *Player) DrawCards(n int) {
-
 	if len(p.deck) < n {
 		n = len(p.deck)
 	}
@@ -243,7 +233,6 @@ func (p *Player) DrawCards(n int) {
 
 // HasCard checks if a container has a card
 func (p *Player) HasCard(container Container, id string) bool {
-
 	c, err := p.Container(container)
 	if err != nil {
 		logrus.Debugf("HasCard: %s", err)
@@ -261,7 +250,6 @@ func (p *Player) HasCard(container Container, id string) bool {
 
 // GetCard returns a pointer to a Card by its ID and container
 func (p *Player) GetCard(id string) (*Card, error) {
-
 	for _, card := range p.match.CollectCards() {
 		if card.id == id {
 			return card, nil
@@ -273,7 +261,6 @@ func (p *Player) GetCard(id string) (*Card, error) {
 
 // Damage reduces life of player
 func (p *Player) Damage(source *Card, ctx *Context, health int) {
-
 	if health <= 0 {
 		return
 	}
@@ -302,7 +289,6 @@ func (p *Player) Damage(source *Card, ctx *Context, health int) {
 
 // Heal reduces life of player
 func (p *Player) Heal(source *Card, ctx *Context, health int) {
-
 	if health <= 0 {
 		return
 	}
@@ -326,8 +312,7 @@ func (p *Player) Heal(source *Card, ctx *Context, health int) {
 
 // denormalized returns a server.PlayerState
 func (p *Player) denormalized() PlayerState {
-
-	state := PlayerState{
+	return PlayerState{
 		Life:       p.life,
 		Deck:       len(p.deck),
 		Hand:       denormalizeCards(p.hand),
@@ -335,20 +320,14 @@ func (p *Player) denormalized() PlayerState {
 		Battlezone: denormalizeCards(p.battlezone),
 		Trapzone:   denormalizeCards(p.trapzone),
 	}
-
-	return state
 }
 
 // hideCards takes an array of *Card and returns an array of empty CardStates
 func hideCards(n int) []CardState {
-
 	arr := make([]CardState, 0)
 
 	for i := 0; i < n; i++ {
-
-		cs := CardState{}
-
-		arr = append(arr, cs)
+		arr = append(arr, CardState{})
 	}
 
 	return arr
@@ -361,7 +340,6 @@ func (p *Player) Search(cards []*Card, text string, min int, max int, cancellabl
 
 // Filter prompts the user to select n cards from the specified container that matches the given filter
 func (p *Player) Filter(cards []*Card, text string, min int, max int, cancellable bool, filter func(*Card) bool) []*Card {
-
 	result := make([]*Card, 0)
 	filtered := make([]*Card, 0)
 
@@ -393,6 +371,7 @@ func (p *Player) Filter(cards []*Card, text string, min int, max int, cancellabl
 						logrus.Debugf("Filter: %s", err)
 						return result
 					}
+
 					result = append(result, c)
 				}
 
@@ -409,7 +388,6 @@ func (p *Player) Filter(cards []*Card, text string, min int, max int, cancellabl
 
 // GetCreatures ...
 func (p *Player) GetCreatures() []*Card {
-
 	creatures := make([]*Card, 0)
 
 	if cards, err := p.Container(BATTLEZONE); err == nil {

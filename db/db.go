@@ -14,7 +14,6 @@ var conn *mongo.Database
 
 // Connect connects to the database
 func Connect(connectionString string, dbName string) {
-
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(connectionString))
 
 	if err != nil {
@@ -39,7 +38,6 @@ func Collection(collectionName string) *mongo.Collection {
 
 // GetUserForToken returns a user from the authorization header or returns an error
 func GetUserForToken(token string) (User, error) {
-
 	collection := Collection("users")
 
 	var user User

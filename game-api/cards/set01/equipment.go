@@ -9,7 +9,6 @@ import (
 
 // Churika ...
 func Churika() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Churika",
 		Rank:   0,
@@ -26,7 +25,6 @@ func Churika() *match.Card {
 
 // Khadga ...
 func Khadga() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Khadga",
 		Rank:   1,
@@ -43,7 +41,6 @@ func Khadga() *match.Card {
 
 // VampireFangs ...
 func VampireFangs() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Vampire Fangs",
 		Rank:   0,
@@ -65,7 +62,6 @@ func VampireFangs() *match.Card {
 
 // WindCloak ...
 func WindCloak() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Wind Cloak",
 		Rank:    0,
@@ -87,7 +83,6 @@ func WindCloak() *match.Card {
 
 // ScopeLens ...
 func ScopeLens() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:   "Scope Lens",
 		Rank:   0,
@@ -112,7 +107,6 @@ func ScopeLens() *match.Card {
 
 // ShellArmor ...
 func ShellArmor() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Shell Armor",
 		Rank:    0,

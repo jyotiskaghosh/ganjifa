@@ -23,24 +23,30 @@ var socketsMutex = sync.Mutex{}
 // Sockets returns a list of the current sockets
 func Sockets() []*Socket {
 	result := make([]*Socket, 0)
+
 	socketsMutex.Lock()
 	defer socketsMutex.Unlock()
+
 	for s := range sockets {
 		result = append(result, s)
 	}
+
 	return result
 }
 
 // SocketsInHub ...
 func SocketsInHub(hubID string) []*Socket {
 	result := make([]*Socket, 0)
+
 	socketsMutex.Lock()
 	defer socketsMutex.Unlock()
+
 	for s, hub := range sockets {
 		if hub.Name() == hubID {
 			result = append(result, s)
 		}
 	}
+
 	return result
 }
 
@@ -57,7 +63,6 @@ type Socket struct {
 
 // NewSocket creates and returns a new Socket instance
 func NewSocket(c *websocket.Conn, hub Hub) *Socket {
-
 	s := &Socket{
 		conn:   c,
 		hub:    hub,
@@ -74,7 +79,6 @@ func NewSocket(c *websocket.Conn, hub Hub) *Socket {
 	logrus.Debugf("Opened a connection")
 
 	return s
-
 }
 
 // Ready returns true or false based on if the socket is ready or not
@@ -84,7 +88,6 @@ func (s *Socket) Ready() bool {
 
 // Listen sets up reader and writer for the socket
 func (s *Socket) Listen() {
-
 	s.conn.SetReadLimit(maxMessageSize)
 	s.conn.SetReadDeadline(time.Now().Add(pongWait))
 	s.conn.SetPongHandler(func(string) error { s.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
@@ -94,7 +97,6 @@ func (s *Socket) Listen() {
 	go s.handlePing()
 
 	for {
-
 		_, message, err := s.conn.ReadMessage()
 
 		if err != nil {
@@ -102,7 +104,6 @@ func (s *Socket) Listen() {
 		}
 
 		if !s.ready {
-
 			// Look for authorization token as the first message
 			u, err := db.GetUserForToken(string(message))
 
@@ -116,18 +117,15 @@ func (s *Socket) Listen() {
 			s.Write(Message{Header: "hello"})
 
 			continue
-
 		}
 
 		go s.hub.Parse(s, message)
-
 	}
-
 }
 
 func (s *Socket) handlePing() {
-
 	ticker := time.NewTicker(pingPeriod)
+
 	defer ticker.Stop()
 	defer func() {
 		if r := recover(); r != nil {
@@ -136,7 +134,6 @@ func (s *Socket) handlePing() {
 	}()
 
 	for {
-
 		if s.closed || s.lost {
 			return
 		}
@@ -155,12 +152,10 @@ func (s *Socket) handlePing() {
 			}
 		}
 	}
-
 }
 
 // Write sends a struct v to the client
 func (s *Socket) Write(v interface{}) {
-
 	if s.closed || s.lost {
 		return
 	}
@@ -178,12 +173,10 @@ func (s *Socket) Write(v interface{}) {
 		logrus.Debug(err)
 	}
 	s.mutex.Unlock()
-
 }
 
 // Close closes the client connection
 func (s *Socket) Close() {
-
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Warnf("Recovered from socket close. %v", r)
@@ -210,19 +203,16 @@ func (s *Socket) Close() {
 	}
 
 	logrus.Debug("Closed a connection")
-
 }
 
 // GetUserList returns a list of users currently online
 func GetUserList() UserListMessage {
-
 	usersMap := make(map[string]UserMessage)
 
 	socketsMutex.Lock()
 	defer socketsMutex.Unlock()
 
 	for s, h := range sockets {
-
 		userEntry := UserMessage{
 			Username:    s.User.Username,
 			Color:       s.User.Color,
@@ -231,17 +221,14 @@ func GetUserList() UserListMessage {
 		}
 
 		if _, ok := usersMap[s.User.Username]; ok {
-
 			// Replace if this socket is in a match because the client shows
 			// an icon for if the player is in a match or just the lobby
 			if userEntry.Hub == "match" {
 				usersMap[s.User.Username] = userEntry
 			}
-
 		} else {
 			usersMap[s.User.Username] = userEntry
 		}
-
 	}
 
 	users := make([]UserMessage, 0)
@@ -254,5 +241,4 @@ func GetUserList() UserListMessage {
 		Header: "users",
 		Users:  users,
 	}
-
 }

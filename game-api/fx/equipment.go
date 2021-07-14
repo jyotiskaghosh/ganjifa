@@ -7,13 +7,10 @@ import (
 
 // Equipment has default functionality for equipments
 func Equipment(card *match.Card, ctx *match.Context) {
-
 	switch event := ctx.Event().(type) {
-
 	// On card played
 	case *match.PlayCardEvent:
 		if event.ID == card.ID() {
-
 			if len(event.Targets) <= 0 {
 				ctx.InterruptFlow()
 				return
@@ -37,14 +34,11 @@ func Equipment(card *match.Card, ctx *match.Context) {
 				card.AttachTo(target)
 			})
 		}
-
 	// When the equipment is played reactively
 	case *match.TrapEvent:
 		if event.ID == card.ID() {
-
 			// Do this last in case any other cards want to interrupt the flow
 			ctx.ScheduleAfter(func() {
-
 				playCtx := match.NewContext(ctx.Match(), &match.PlayCardEvent{
 					ID: card.ID(),
 				})
@@ -56,13 +50,11 @@ func Equipment(card *match.Card, ctx *match.Context) {
 				}
 			})
 		}
-
 	// When calculating attack
 	case *match.GetAttackEvent:
 		if card.AttachedTo() != nil && event.ID == card.AttachedTo().ID() {
 			event.Attack += card.Attack()
 		}
-
 	// When calculating defence
 	case *match.GetDefenceEvent:
 		if card.AttachedTo() != nil && event.ID == card.AttachedTo().ID() {

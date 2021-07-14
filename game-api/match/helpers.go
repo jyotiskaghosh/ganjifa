@@ -8,9 +8,7 @@ import (
 
 // AssertCardsIn returns true or false based on if the specified card ids are present in the source []*Card
 func AssertCardsIn(src []*Card, test []string) bool {
-
 	for _, toTest := range test {
-
 		ok := false
 
 		for _, card := range src {
@@ -29,14 +27,14 @@ func AssertCardsIn(src []*Card, test []string) bool {
 
 // Devolve ...
 func Devolve(card *Card, src *Card) {
-
 	cards := card.player.Filter(
 		card.Attachments(),
 		"Select a card",
 		1,
 		1,
 		false,
-		func(x *Card) bool { return x.Family() != family.Equipment })
+		func(x *Card) bool { return x.Family() != family.Equipment },
+	)
 
 	if len(cards) < 1 {
 		card.player.match.Destroy(card, src)
@@ -68,5 +66,6 @@ func CanPerformEvent(ctx *Context) bool {
 			h(c, ctx)
 		}
 	}
+
 	return !ctx.cancel
 }

@@ -14,13 +14,10 @@ type HandlerFunc func(card *Card, ctx *Context)
 
 // NewContext returns a new match context
 func NewContext(m *Match, e interface{}) *Context {
-
-	ctx := &Context{
+	return &Context{
 		match: m,
 		event: e,
 	}
-
-	return ctx
 }
 
 // Match ...

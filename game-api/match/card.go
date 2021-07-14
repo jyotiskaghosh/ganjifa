@@ -58,7 +58,6 @@ func (cb *CardBuilder) Build() *Card {
 
 // NewCard returns a new, initialized card
 func NewCard(p *Player, cardID int) (*Card, error) {
-
 	c, err := CardCtor(cardID)
 	if err != nil {
 		logrus.Warnf("NewCard: %s", err)
@@ -140,7 +139,6 @@ func (c *Card) AddCondition(handlers ...HandlerFunc) {
 
 // RemoveCondition removes all instances of the given handler from the cards conditions
 func (c *Card) RemoveCondition(handler HandlerFunc) {
-
 	tmp := make([]HandlerFunc, 0)
 
 	for _, condition := range c.conditions {
@@ -164,7 +162,6 @@ func (c *Card) AttachedTo() *Card {
 
 // Attachments returns a copy of the card's attached cards
 func (c *Card) Attachments() []*Card {
-
 	result := make([]*Card, 0)
 
 	cards, err := c.player.Container(SOUL)
@@ -184,7 +181,6 @@ func (c *Card) Attachments() []*Card {
 
 // AttachTo attaches c to card
 func (c *Card) AttachTo(card *Card) {
-
 	if c.player != card.player || card.zone != BATTLEZONE || c == card {
 		return
 	}
@@ -193,6 +189,7 @@ func (c *Card) AttachTo(card *Card) {
 		logrus.Debugf("AttachTo: %s", err)
 		return
 	}
+
 	c.attachedTo = card
 }
 
@@ -203,7 +200,6 @@ func (c *Card) Detach() {
 
 // MoveCard tries to move a card to container b
 func (c *Card) MoveCard(destination Container) error {
-
 	from, err := c.player.containerRef(c.zone)
 	if err != nil {
 		return fmt.Errorf("Couldn't move card %s(%s) to %s", c.id, c.name, destination)
@@ -239,10 +235,12 @@ func (c *Card) MoveCard(destination Container) error {
 		To:   destination,
 	})
 	c.player.match.HandleFx(ctx)
+
 	c.player.match.BroadcastState(ctx.event)
 
 	for _, card := range c.Attachments() {
 		card.attachedTo = c.attachedTo
+
 		c.MoveCard(destination)
 	}
 
@@ -251,7 +249,6 @@ func (c *Card) MoveCard(destination Container) error {
 
 // GetRank returns the rank of a given card
 func (c *Card) GetRank(ctx *Context) int {
-
 	e := &GetRankEvent{
 		ID:    c.id,
 		Event: ctx.event,
@@ -264,7 +261,6 @@ func (c *Card) GetRank(ctx *Context) int {
 
 // GetCivilisation returns the Civ of a given card
 func (c *Card) GetCivilisation(ctx *Context) map[civ.Civilisation]bool {
-
 	e := &GetCivilisationEvent{
 		ID:    c.id,
 		Event: ctx.event,
@@ -277,7 +273,6 @@ func (c *Card) GetCivilisation(ctx *Context) map[civ.Civilisation]bool {
 
 // GetFamily returns the family of a given card
 func (c *Card) GetFamily(ctx *Context) map[string]bool {
-
 	e := &GetFamilyEvent{
 		ID:     c.id,
 		Event:  ctx.event,
@@ -290,7 +285,6 @@ func (c *Card) GetFamily(ctx *Context) map[string]bool {
 
 // GetAttack returns the attack of a given card
 func (c *Card) GetAttack(ctx *Context) int {
-
 	e := &GetAttackEvent{
 		ID:     c.id,
 		Event:  ctx.event,
@@ -303,7 +297,6 @@ func (c *Card) GetAttack(ctx *Context) int {
 
 // GetDefence returns the defence of a given card
 func (c *Card) GetDefence(ctx *Context) int {
-
 	e := &GetDefenceEvent{
 		ID:      c.id,
 		Event:   ctx.event,
@@ -316,7 +309,6 @@ func (c *Card) GetDefence(ctx *Context) int {
 
 // GetHandlers returns the HandlerFuncs of a given card
 func (c *Card) GetHandlers(ctx *Context) []HandlerFunc {
-
 	e := &GetHandlerEvent{
 		ID:       c.id,
 		Event:    ctx.event,
@@ -326,7 +318,6 @@ func (c *Card) GetHandlers(ctx *Context) []HandlerFunc {
 
 	for _, card := range ctx.match.CollectCards() {
 		for _, h := range append(card.handlers, card.conditions...) {
-
 			if ctx.cancel {
 				break
 			}
@@ -345,6 +336,7 @@ func (c *Card) HasHandler(handler HandlerFunc, ctx *Context) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -355,6 +347,7 @@ func (c *Card) HasFamily(family string, ctx *Context) bool {
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -365,6 +358,7 @@ func (c *Card) HasCivilisation(civilisation civ.Civilisation, ctx *Context) bool
 			return true
 		}
 	}
+
 	return false
 }
 
@@ -388,7 +382,6 @@ func (c *Card) AmIPlayed(ctx *Context) bool {
 
 // EvolveTo handles evolution
 func (c *Card) EvolveTo(card *Card) {
-
 	if err := card.MoveCard(BATTLEZONE); err != nil {
 		logrus.Debugf("EvolveTo: %s", err)
 		return
@@ -419,12 +412,10 @@ func (c *Card) denormalizeCard() CardState {
 
 // denormalizeCards takes an array of *Card and returns an array of CardState
 func denormalizeCards(cards []*Card) []CardState {
-
 	arr := make([]CardState, 0)
 
 	for _, c := range cards {
-		cs := c.denormalizeCard()
-		arr = append(arr, cs)
+		arr = append(arr, c.denormalizeCard())
 	}
 
 	return arr

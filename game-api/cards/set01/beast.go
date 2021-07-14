@@ -12,7 +12,6 @@ import (
 
 // Salavrka ...
 func Salavrka() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Salavrka",
 		Rank:    0,
@@ -40,7 +39,6 @@ func Salavrka() *match.Card {
 
 // Vanara ...
 func Vanara() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Vanara",
 		Rank:    0,
@@ -58,7 +56,6 @@ func Vanara() *match.Card {
 
 // Krostr ...
 func Krostr() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Krostr",
 		Rank:    1,
@@ -71,7 +68,6 @@ func Krostr() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
-
 						cards, err := card.Player().Container(match.DECK)
 						if err != nil {
 							ctx.InterruptFlow()
@@ -93,6 +89,7 @@ func Krostr() *match.Card {
 								logrus.Debug(err)
 								return
 							}
+
 							ctx.Match().Chat("Server", fmt.Sprintf("%s was moved from %s's deck to their hand", c.Name(), card.Player().Name()))
 						}
 
@@ -108,7 +105,6 @@ func Krostr() *match.Card {
 
 // Dvipin ...
 func Dvipin() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Dvipin",
 		Rank:    1,
@@ -127,7 +123,6 @@ func Dvipin() *match.Card {
 
 // Simha ...
 func Simha() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Simha",
 		Rank:    2,

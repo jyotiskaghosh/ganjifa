@@ -60,7 +60,6 @@ func Broadcast(msg interface{}) {
 
 // StartTicker starts the lobby ticker
 func (l *Lobby) StartTicker() {
-
 	ticker := time.NewTicker(30 * time.Second) // tick every 30 seconds
 
 	defer ticker.Stop()
@@ -74,7 +73,6 @@ func (l *Lobby) StartTicker() {
 	go ListenForMatchListUpdates()
 
 	for {
-
 		select {
 		case <-ticker.C:
 			{
@@ -92,9 +90,7 @@ func UpdateUserCache() {
 
 // ListenForMatchListUpdates broadcasts changes to the open matches to all lobby subscribers
 func ListenForMatchListUpdates() {
-
 	for {
-
 		update := <-match.LobbyMatchList()
 
 		matchCache = update
@@ -105,7 +101,6 @@ func ListenForMatchListUpdates() {
 
 // Parse websocket messages
 func (l *Lobby) Parse(s *server.Socket, data []byte) {
-
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Warnf("Recovered from parsing a message in lobby. %v", r)
@@ -118,7 +113,6 @@ func (l *Lobby) Parse(s *server.Socket, data []byte) {
 	}
 
 	switch message.Header {
-
 	case "subscribe":
 		{
 			subscribersMutex.Lock()
@@ -145,16 +139,12 @@ func (l *Lobby) Parse(s *server.Socket, data []byte) {
 			// Write match list
 
 			s.Write(matchCache)
-
 		}
-
 	case "chat":
 		{
-
 			var msg struct {
 				Message string `json:"message"`
 			}
-
 			if err := json.Unmarshal(data, &msg); err != nil {
 				return
 			}
@@ -210,7 +200,6 @@ func chat(s *server.Socket, message string) {
 }
 
 func handleChatCommand(s *server.Socket, command string) {
-
 	hasRights := false
 
 	for _, permission := range s.User.Permissions {
@@ -239,7 +228,6 @@ func handleChatCommand(s *server.Socket, command string) {
 			}
 			chat(s, "Sockets: "+message)
 		}
-
 	case "/matches":
 		{
 			message := ""
@@ -258,18 +246,15 @@ func handleChatCommand(s *server.Socket, command string) {
 
 // OnSocketClose is called when a socket disconnects
 func (l *Lobby) OnSocketClose(s *server.Socket) {
-
 	subscribersMutex.Lock()
 	defer subscribersMutex.Unlock()
 
 	subscribersUpdate := make([]*server.Socket, 0)
 
 	for _, subscriber := range subscribers {
-
 		if subscriber != s {
 			subscribersUpdate = append(subscribersUpdate, subscriber)
 		}
-
 	}
 
 	subscribers = subscribersUpdate

@@ -12,7 +12,6 @@ import (
 
 // Ayudhabhrt ...
 func Ayudhabhrt() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Ayudhabhrt",
 		Rank:    0,
@@ -38,7 +37,6 @@ func Ayudhabhrt() *match.Card {
 
 // Sainika ...
 func Sainika() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Sainika",
 		Rank:    0,
@@ -56,7 +54,6 @@ func Sainika() *match.Card {
 
 // Sastravikrayin ...
 func Sastravikrayin() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Sastravikrayin",
 		Rank:    1,
@@ -69,7 +66,6 @@ func Sastravikrayin() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
-
 						cards, err := card.Player().Container(match.DECK)
 						if err != nil {
 							ctx.InterruptFlow()
@@ -91,6 +87,7 @@ func Sastravikrayin() *match.Card {
 								logrus.Debug(err)
 								return
 							}
+
 							ctx.Match().Chat("Server", fmt.Sprintf("%s was moved from %s's deck to their hand", c.Name(), card.Player().Name()))
 						}
 
@@ -106,7 +103,6 @@ func Sastravikrayin() *match.Card {
 
 // Astrakara ...
 func Astrakara() *match.Card {
-
 	cb := match.CardBuilder{
 		Name:    "Astrakara",
 		Rank:    1,
@@ -118,7 +114,6 @@ func Astrakara() *match.Card {
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 				if event, ok := ctx.Event().(*match.GetRankEvent); ok && card.Zone() == match.BATTLEZONE {
-
 					card, err := card.Player().GetCard(event.ID)
 					if err != nil {
 						logrus.Debug(err)

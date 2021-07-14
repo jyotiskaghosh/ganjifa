@@ -10,21 +10,17 @@ import (
 
 // Creature has default behaviours for creatures
 func Creature(card *match.Card, ctx *match.Context) {
-
 	switch event := ctx.Event().(type) {
-
 	// Untap the card
 	case *match.UntapStep:
 		if card.Player().IsPlayerTurn() {
 			card.ClearConditions()
 			card.Tapped = false
 		}
-
 	// On playing the card
 	case *match.PlayCardEvent:
 		if event.ID == card.ID() {
 			if len(event.Targets) > 0 {
-
 				target, err := card.Player().GetCard(event.Targets[0])
 				if err != nil {
 					ctx.InterruptFlow()
@@ -33,6 +29,7 @@ func Creature(card *match.Card, ctx *match.Context) {
 				}
 
 				dif := card.GetRank(ctx) - target.GetRank(ctx)
+
 				if target.HasFamily(card.Family(), ctx) && dif >= 0 && dif <= 1 {
 					ctx.InterruptFlow()
 					return
@@ -43,24 +40,21 @@ func Creature(card *match.Card, ctx *match.Context) {
 					target.EvolveTo(card)
 					card.AddCondition(CantEvolve)
 				})
-
 			} else if card.GetRank(ctx) == 0 {
-
 				// Do this last in case any other cards want to interrupt the flow
 				ctx.ScheduleAfter(func() {
 					if err := card.MoveCard(match.BATTLEZONE); err != nil {
 						logrus.Debug(err)
 						return
 					}
+
 					card.AddCondition(CantEvolve)
 				})
 			}
 		}
-
 	// Attack the player
 	case *match.AttackPlayer:
 		if event.ID == card.ID() {
-
 			if card.Tapped || card.Zone() != match.BATTLEZONE || card.GetAttack(ctx) <= 0 {
 				ctx.InterruptFlow()
 				return
@@ -68,7 +62,6 @@ func Creature(card *match.Card, ctx *match.Context) {
 
 			// Do this last in case any other cards want to interrupt the flow
 			ctx.ScheduleAfter(func() {
-
 				opponent := ctx.Match().Opponent(card.Player())
 
 				trapzone, err := ctx.Match().Opponent(card.Player()).Container(match.TRAPZONE)
@@ -94,19 +87,17 @@ func Creature(card *match.Card, ctx *match.Context) {
 								Attacker: card,
 							}))
 						}
+
 						return true
 					})
 
 				for _, c := range cards {
 					if c.Zone() == match.TRAPZONE {
-
 						ctx.Match().HandleFx(match.NewContext(ctx.Match(), &match.TrapEvent{
 							ID:       c.ID(),
 							Attacker: card,
 						}))
-
 					} else {
-
 						// Blocking attack
 						blockCtx := match.NewContext(ctx.Match(), &match.BlockEvent{
 							ID:       c.ID(),
@@ -134,11 +125,9 @@ func Creature(card *match.Card, ctx *match.Context) {
 				}
 			})
 		}
-
 	// Attack a creature
 	case *match.AttackCreature:
 		if event.ID == card.ID() {
-
 			if card.Tapped || card.Zone() != match.BATTLEZONE || card.GetAttack(ctx) <= 0 {
 				ctx.InterruptFlow()
 				return
@@ -159,7 +148,6 @@ func Creature(card *match.Card, ctx *match.Context) {
 
 			// Do this last in case any other cards want to interrupt the flow
 			ctx.ScheduleAfter(func() {
-
 				trapzone, err := ctx.Match().Opponent(card.Player()).Container(match.TRAPZONE)
 				if err != nil {
 					logrus.Debug(err)
@@ -183,19 +171,17 @@ func Creature(card *match.Card, ctx *match.Context) {
 								Attacker: card,
 							}))
 						}
+
 						return true
 					})
 
 				for _, c := range cards {
 					if c.Zone() == match.TRAPZONE {
-
 						ctx.Match().HandleFx(match.NewContext(ctx.Match(), &match.TrapEvent{
 							ID:       c.ID(),
 							Attacker: card,
 						}))
-
 					} else {
-
 						// Blocking attack
 						blockCtx := match.NewContext(ctx.Match(), &match.BlockEvent{
 							ID:       c.ID(),
@@ -211,11 +197,13 @@ func Creature(card *match.Card, ctx *match.Context) {
 				}
 
 				// Update cards
+
 				card, err = card.Player().GetCard(event.ID)
 				if err != nil {
 					logrus.Debug(err)
 					return
 				}
+
 				target, err = opponent.GetCard(event.TargetID)
 				if err != nil {
 					logrus.Debug(err)
@@ -228,11 +216,9 @@ func Creature(card *match.Card, ctx *match.Context) {
 				}
 			})
 		}
-
 	// When blocking
 	case *match.BlockEvent:
 		if event.ID == card.ID() {
-
 			if card.Tapped || card.Zone() != match.BATTLEZONE || card.GetDefence(ctx) <= 0 {
 				ctx.InterruptFlow()
 				return
@@ -244,11 +230,9 @@ func Creature(card *match.Card, ctx *match.Context) {
 				ctx.Match().Battle(event.Attacker, card, true)
 			})
 		}
-
 	// When destroyed
 	case *match.CreatureDestroyed:
 		if event.ID == card.ID() {
-
 			if card.Zone() != match.BATTLEZONE {
 				ctx.InterruptFlow()
 				return
