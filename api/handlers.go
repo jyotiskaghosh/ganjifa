@@ -207,7 +207,6 @@ func CardsHandler(c *gin.Context) {
 
 // GetDecksHandler returns an array of the users decks
 func GetDecksHandler(c *gin.Context) {
-
 	user, err := db.GetUserForToken(c.GetHeader("Authorization"))
 	if err != nil {
 		c.Status(401)

@@ -333,34 +333,15 @@ func hideCards(n int) []CardState {
 	return arr
 }
 
-// Search prompts the user to select n cards from the specified container
-func (p *Player) Search(cards []*Card, text string, min int, max int, cancellable bool) []*Card {
-	return p.Filter(cards, text, min, max, cancellable, func(c *Card) bool { return true })
-}
-
-// Filter prompts the user to select n cards from the specified container that matches the given filter
-func (p *Player) Filter(cards []*Card, text string, min int, max int, cancellable bool, filter func(*Card) bool) []*Card {
+// Search prompts the user to select n cards from a slice of cards
+func (p *Player) Search(cards []*Card, min int, max int, cancellable bool) []*Card {
 	result := make([]*Card, 0)
-	filtered := make([]*Card, 0)
-
-	for _, mCard := range cards {
-		if filter(mCard) {
-			filtered = append(filtered, mCard)
-		}
-	}
-
-	if len(filtered) < 1 {
-		return result
-	}
-
-	p.match.NewAction(p, filtered, min, max, text, cancellable)
-	defer p.match.CloseAction(p)
 
 	for {
 		select {
 		case action := <-p.Action:
 			{
-				if len(action) < min || len(action) > max || !AssertCardsIn(filtered, action) {
+				if len(action) < min || len(action) > max || !AssertCardsIn(cards, action) {
 					p.match.WarnPlayer(p, "The cards you selected does not meet the requirements")
 					continue
 				}
@@ -368,7 +349,7 @@ func (p *Player) Filter(cards []*Card, text string, min int, max int, cancellabl
 				for _, id := range action {
 					c, err := p.GetCard(id)
 					if err != nil {
-						logrus.Debugf("Filter: %s", err)
+						logrus.Debugf("Search: %s", err)
 						return result
 					}
 
@@ -384,6 +365,14 @@ func (p *Player) Filter(cards []*Card, text string, min int, max int, cancellabl
 			}
 		}
 	}
+}
+
+// SearchAction is an action that prompts the user to select n cards from a slice of cards
+func (p *Player) SearchAction(cards []*Card, text string, min int, max int, cancellable bool) []*Card {
+	p.match.NewAction(p, cards, min, max, text, cancellable)
+	defer p.match.CloseAction(p)
+
+	return p.Search(cards, min, max, cancellable)
 }
 
 // GetCreatures ...

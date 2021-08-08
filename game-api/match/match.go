@@ -207,7 +207,7 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 
 			if ok := pr.Player.HasCard(HAND, msg.ID); ok &&
 				AssertCardsIn(append(pr.Player.GetCreatures(), m.Opponent(pr.Player).GetCreatures()...), msg.Targets) {
-					m.PlayCard(msg.ID, msg.Targets)
+				m.PlayCard(msg.ID, msg.Targets)
 			}
 		}
 	case "action":
@@ -381,14 +381,6 @@ func (m *Match) Battle(attacker *Card, defender *Card, blocked bool) {
 func (m *Match) Destroy(card *Card, source *Card) {
 	ctx := NewContext(m, &CreatureDestroyed{ID: card.id, Source: source})
 	m.HandleFx(ctx)
-
-	m.BroadcastState(struct {
-		ID     string
-		Source CardState
-	}{
-		ID:     card.id,
-		Source: source.denormalizeCard(),
-	})
 }
 
 // CollectCards ...
@@ -628,6 +620,15 @@ func (m *Match) AttackPlayer(pr *PlayerReference, id string) {
 	})
 	m.HandleFx(ctx)
 
+	// Tap card after attack
+	// card gets tapped even if attack fails, this is done to prevent reusing before attacking effects
+	card, err := m.GetCard(id)
+	if err != nil {
+		logrus.Debug(err)
+	} else {
+		card.Tapped = true
+	}
+
 	m.BroadcastState(ctx.event)
 }
 
@@ -638,6 +639,15 @@ func (m *Match) AttackCreature(pr *PlayerReference, id string, targetID string) 
 		TargetID: targetID,
 	})
 	m.HandleFx(ctx)
+
+	// Tap card after attack
+	// card gets tapped even if attack fails, this is done to prevent reusing before attacking effects
+	card, err := m.GetCard(id)
+	if err != nil {
+		logrus.Debug(err)
+	} else {
+		card.Tapped = true
+	}
 
 	m.BroadcastState(ctx.event)
 }

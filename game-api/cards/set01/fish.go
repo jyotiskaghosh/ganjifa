@@ -19,7 +19,6 @@ func Matsyaka() *match.Card {
 		Handlers: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
-
 				if event, ok := ctx.Event().(*match.GetAttackEvent); ok {
 					if card.AttachedTo() != nil && event.ID == card.AttachedTo().ID() {
 						event.Attack += 100

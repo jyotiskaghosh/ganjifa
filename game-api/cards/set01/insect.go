@@ -75,21 +75,18 @@ func MahisiPipilika() *match.Card {
 						return
 					}
 
-					cards = card.Player().Filter(
-						cards,
+					cards = card.Player().SearchAction(
+						match.Filter(cards, func(x *match.Card) bool { return x.Family() == family.Insect }),
 						fmt.Sprintf("Select 1 %s", family.Insect),
 						1,
 						1,
-						true,
-						func(x *match.Card) bool { return x.Family() == family.Insect },
-					)
+						true)
 
 					for _, c := range cards {
 						if err := c.MoveCard(match.HAND); err != nil {
 							logrus.Debug(err)
 							return
 						}
-
 						ctx.Match().Chat("Server", fmt.Sprintf("%s was moved from %s's deck to their hand", c.Name(), card.Player().Name()))
 					}
 

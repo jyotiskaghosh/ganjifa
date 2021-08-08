@@ -75,14 +75,12 @@ func Krostr() *match.Card {
 							return
 						}
 
-						cards = card.Player().Filter(
-							cards,
+						cards = card.Player().SearchAction(
+							match.Filter(cards, func(x *match.Card) bool { return x.Family() == family.Beast }),
 							fmt.Sprintf("Select 1 %s", family.Beast),
 							1,
 							1,
-							true,
-							func(x *match.Card) bool { return x.Family() == family.Beast },
-						)
+							true)
 
 						for _, c := range cards {
 							if err := c.MoveCard(match.HAND); err != nil {

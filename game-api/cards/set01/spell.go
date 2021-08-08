@@ -283,7 +283,7 @@ func AirMail() *match.Card {
 							return
 						}
 
-						cards = card.Player().Search(
+						cards = card.Player().SearchAction(
 							cards,
 							"Select a card",
 							1,
@@ -329,7 +329,7 @@ func Whirlwind() *match.Card {
 							return
 						}
 
-						cards = card.Player().Search(
+						cards = card.Player().SearchAction(
 							cards,
 							"Select a card",
 							1,

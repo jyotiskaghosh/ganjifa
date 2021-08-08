@@ -27,14 +27,12 @@ func AssertCardsIn(src []*Card, test []string) bool {
 
 // Devolve ...
 func Devolve(card *Card, src *Card) {
-	cards := card.player.Filter(
-		card.Attachments(),
+	cards := card.player.SearchAction(
+		Filter(card.Attachments(), func(x *Card) bool { return x.Family() != family.Equipment }),
 		"Select a card",
 		1,
 		1,
-		false,
-		func(x *Card) bool { return x.Family() != family.Equipment },
-	)
+		false)
 
 	if len(cards) < 1 {
 		card.player.match.Destroy(card, src)
@@ -59,13 +57,15 @@ func Devolve(card *Card, src *Card) {
 	card.player.match.Destroy(card, src)
 }
 
-// CanPerformEvent ...
-func CanPerformEvent(ctx *Context) bool {
-	for _, c := range ctx.match.CollectCards() {
-		for _, h := range c.GetHandlers(ctx) {
-			h(c, ctx)
+// Filter filters a slice of cards according to the filter func
+func Filter(cards []*Card, filter func(*Card) bool) []*Card {
+	filtered := make([]*Card, 0)
+
+	for _, mCard := range cards {
+		if filter(mCard) {
+			filtered = append(filtered, mCard)
 		}
 	}
 
-	return !ctx.cancel
+	return filtered
 }
