@@ -47,7 +47,6 @@ A game state consists of the following card containers/zones
    
    Whenever your opponent's creatures attack you can play your set down cards. You may only play spells and Equipments this way(unless stated otherwise)
    You can also use your untapped creatures to block an incoming attack.
-   You can only perform one action per attack, i.e either play a set down card, or block.
 
 # Victory Conditions
 

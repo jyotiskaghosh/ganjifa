@@ -7,7 +7,7 @@ import (
 )
 
 // AssertCardsIn returns true or false based on if the specified card ids are present in the source []*Card
-func AssertCardsIn(src []*Card, test []string) bool {
+func AssertCardsIn(src []*Card, test ...string) bool {
 	for _, toTest := range test {
 		ok := false
 

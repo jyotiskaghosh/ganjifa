@@ -29,11 +29,12 @@ func Creature(card *match.Card, ctx *match.Context) {
 						logrus.Debug(err)
 						return
 					}
+					ctx.Match().Chat("server", fmt.Sprintf("%s summoned creature %s", card.Player().Name(), card.Name()))
 
 					card.AddCondition(CantEvolve)
 				})
-			} else if card.GetRank(ctx) > 0 && len(event.Targets) > 0 {
-				target, err := card.Player().GetCard(event.Targets[0])
+			} else if card.GetRank(ctx) > 0 {
+				target, err := card.Player().GetCard(event.TargetID)
 				if err != nil {
 					ctx.InterruptFlow()
 					logrus.Debug(err)
@@ -50,73 +51,16 @@ func Creature(card *match.Card, ctx *match.Context) {
 				// Do this last in case any other cards want to interrupt the flow
 				ctx.ScheduleAfter(func() {
 					target.EvolveTo(card)
+					ctx.Match().Chat("server", fmt.Sprintf("%s evolved %s to %s", card.Player().Name(), target.Name(), card.Name()))
+
 					card.AddCondition(CantEvolve)
 				})
 			} else {
 				ctx.InterruptFlow()
 			}
 		}
-	// Attack the player
-	case *match.AttackPlayer:
-		if event.ID == card.ID() {
-			if !canAttack() {
-				ctx.InterruptFlow()
-				return
-			}
-
-			// Do this last in case any other cards want to interrupt the flow
-			ctx.ScheduleAfter(func() {
-				opponent := ctx.Match().Opponent(card.Player())
-
-				trapzone, err := ctx.Match().Opponent(card.Player()).Container(match.TRAPZONE)
-				if err != nil {
-					logrus.Debug(err)
-					return
-				}
-
-				cards := opponent.SearchAction(
-					append(opponent.GetCreatures(), trapzone...),
-					fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), opponent.Name()),
-					1,
-					1,
-					true)
-
-				for _, c := range cards {
-					if c.Zone() == match.TRAPZONE {
-						ctx.Match().HandleFx(match.NewContext(ctx.Match(), &match.TrapEvent{
-							ID:       c.ID(),
-							Attacker: card,
-						}))
-					} else {
-						// Blocking attack
-						blockCtx := match.NewContext(ctx.Match(), &match.BlockEvent{
-							ID:       c.ID(),
-							Attacker: card,
-						})
-						ctx.Match().HandleFx(blockCtx)
-
-						if !blockCtx.Cancelled() {
-							ctx.InterruptFlow()
-							return
-						}
-					}
-				}
-
-				// Update card
-				card, err = card.Player().GetCard(event.ID)
-				if err != nil {
-					logrus.Debug(err)
-					return
-				}
-
-				// Can attack?
-				if canAttack() {
-					opponent.Damage(card, ctx, card.GetAttack(ctx))
-				}
-			})
-		}
-	// Attack a creature
-	case *match.AttackCreature:
+	// When Attacking
+	case *match.AttackEvent:
 		if event.ID == card.ID() {
 			if !canAttack() {
 				ctx.InterruptFlow()
@@ -125,72 +69,100 @@ func Creature(card *match.Card, ctx *match.Context) {
 
 			opponent := ctx.Match().Opponent(card.Player())
 
-			target, err := opponent.GetCard(event.TargetID)
-			if err != nil {
-				logrus.Debug(err)
-				return
+			attackfx := func(text string, fx func()) {
+				// Do this last in case any other cards want to interrupt the flow
+				ctx.ScheduleAfter(func() {
+					trapzone, err := opponent.Container(match.TRAPZONE)
+					if err != nil {
+						logrus.Debug(err)
+						return
+					}
+
+					ctx.Match().MessagePlayer(opponent, text)
+
+					opponent.Action(
+						append(opponent.GetCreatures(), trapzone...),
+						1,
+						1,
+						true,
+						func(action []string) {
+							for _, id := range action {
+								c, err := opponent.GetCard(id)
+								if err != nil {
+									logrus.Debugf("Search: %s", err)
+									return
+								}
+
+								if c.Zone() == match.TRAPZONE {
+									ctx.Match().HandleFx(match.NewContext(ctx.Match(), &match.TrapEvent{
+										ID:       c.ID(),
+										Attacker: card,
+									}))
+								} else {
+									// Blocking attack
+									blockCtx := match.NewContext(ctx.Match(), &match.BlockEvent{
+										ID:       c.ID(),
+										Attacker: card,
+									})
+									ctx.Match().HandleFx(blockCtx)
+
+									if !blockCtx.Cancelled() {
+										ctx.InterruptFlow()
+										return
+									}
+								}
+
+								if !canAttack() {
+									ctx.InterruptFlow()
+									return
+								}
+							}
+						},
+						func() {
+							// Update card
+							card, err = card.Player().GetCard(event.ID)
+							if err != nil {
+								logrus.Debug(err)
+								return
+							}
+
+							fx()
+						},
+					)
+				})
 			}
 
-			if target.Zone() != match.BATTLEZONE {
-				ctx.InterruptFlow()
-				return
-			}
-
-			// Do this last in case any other cards want to interrupt the flow
-			ctx.ScheduleAfter(func() {
-				trapzone, err := ctx.Match().Opponent(card.Player()).Container(match.TRAPZONE)
+			if event.TargetID == "" {
+				attackfx(
+					fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), opponent.Name()),
+					func() {
+						opponent.Damage(card, ctx, card.GetAttack(ctx))
+					})
+			} else {
+				target, err := opponent.GetCard(event.TargetID)
 				if err != nil {
 					logrus.Debug(err)
 					return
 				}
 
-				cards := opponent.SearchAction(
-					append(opponent.GetCreatures(), trapzone...),
+				if target.Zone() != match.BATTLEZONE {
+					ctx.InterruptFlow()
+					return
+				}
+
+				attackfx(
 					fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), target.Name()),
-					1,
-					1,
-					true)
-
-				for _, c := range cards {
-					if c.Zone() == match.TRAPZONE {
-						ctx.Match().HandleFx(match.NewContext(ctx.Match(), &match.TrapEvent{
-							ID:       c.ID(),
-							Attacker: card,
-						}))
-					} else {
-						// Blocking attack
-						blockCtx := match.NewContext(ctx.Match(), &match.BlockEvent{
-							ID:       c.ID(),
-							Attacker: card,
-						})
-						ctx.Match().HandleFx(blockCtx)
-
-						if !blockCtx.Cancelled() {
-							ctx.InterruptFlow()
+					func() {
+						// Update target
+						target, err = opponent.GetCard(event.TargetID)
+						if err != nil {
+							logrus.Debug(err)
 							return
 						}
-					}
-				}
 
-				// Update cards
-
-				card, err = card.Player().GetCard(event.ID)
-				if err != nil {
-					logrus.Debug(err)
-					return
-				}
-
-				target, err = opponent.GetCard(event.TargetID)
-				if err != nil {
-					logrus.Debug(err)
-					return
-				}
-
-				// Can attack?
-				if canAttack() {
-					ctx.Match().Battle(card, target, false)
-				}
-			})
+						ctx.Match().Battle(card, target, false)
+					})
+			}
 		}
 	// When blocking
 	case *match.BlockEvent:

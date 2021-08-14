@@ -163,7 +163,7 @@ func (m *Match) startTicker() {
 
 	for {
 		select {
-		case <-m.match.Quit:
+		case <-m.match.Quit():
 			{
 				logrus.Debugf("Closing match %s", m.id)
 				m.ending = true
@@ -196,8 +196,6 @@ func (m *Match) Dispose() {
 	}
 
 	matchesMutex.Lock()
-
-	close(m.match.Quit)
 
 	delete(matches, m.id)
 

@@ -236,8 +236,6 @@ func (c *Card) MoveCard(destination Container) error {
 	})
 	c.player.match.HandleFx(ctx)
 
-	c.player.match.BroadcastState(ctx.event)
-
 	for _, card := range c.Attachments() {
 		card.attachedTo = c.attachedTo
 

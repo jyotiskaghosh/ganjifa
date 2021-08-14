@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 )
@@ -56,10 +57,13 @@ type Player struct {
 	turn   bool
 	turnNo int
 
-	Action chan []string
-	Cancel chan bool
+	action chan []string
+	cancel chan bool
 
 	match *Match
+
+	wait  bool
+	mutex *sync.Mutex
 }
 
 // newPlayer returns a new player
@@ -72,10 +76,9 @@ func newPlayer(match *Match, turn bool) *Player {
 		trapzone:   make([]*Card, 0),
 		soul:       make([]*Card, 0),
 		life:       LIFE,
-		Action:     make(chan []string),
-		Cancel:     make(chan bool),
 		turn:       turn,
 		match:      match,
+		mutex:      &sync.Mutex{},
 	}
 }
 
@@ -98,6 +101,14 @@ func (p *Player) IsPlayerTurn() bool {
 // Turn returns turn no.
 func (p *Player) Turn() int {
 	return p.turnNo
+}
+
+// waiting assigns bool value to m.wait
+func (p *Player) waiting(b bool) {
+	p.mutex.Lock()
+	defer p.mutex.Unlock()
+
+	p.wait = b
 }
 
 // containerRef returns a pointer to one of the player's card zones based on the specified string
@@ -333,38 +344,70 @@ func hideCards(n int) []CardState {
 	return arr
 }
 
-// Search prompts the user to select n cards from a slice of cards
-func (p *Player) Search(cards []*Card, min int, max int, cancellable bool) []*Card {
-	result := make([]*Card, 0)
+// Action prompts the user to select n cards from a slice of cards and perform some functions on them
+func (p *Player) Action(
+	cards []*Card,
+	min int,
+	max int,
+	cancellable bool,
+	actionFx func([]string),
+	closeFx func()) {
+
+	p.action = make(chan []string)
+	p.cancel = make(chan bool)
+	p.waiting(false)
+
+	defer func() {
+		p.waiting(true)
+		close(p.action)
+		close(p.cancel)
+	}()
 
 	for {
 		select {
-		case action := <-p.Action:
+		case action := <-p.action:
 			{
-				if len(action) < min || len(action) > max || !AssertCardsIn(cards, action) {
+				if len(action) < min || len(action) > max || !AssertCardsIn(cards, action...) {
 					p.match.WarnPlayer(p, "The cards you selected does not meet the requirements")
 					continue
 				}
 
-				for _, id := range action {
-					c, err := p.GetCard(id)
-					if err != nil {
-						logrus.Debugf("Search: %s", err)
-						return result
-					}
-
-					result = append(result, c)
-				}
-
-				return result
+				actionFx(action)
 			}
 
-		case cancel := <-p.Cancel:
+		case cancel := <-p.cancel:
 			if cancellable && cancel {
-				return result
+				closeFx()
+				return
 			}
 		}
 	}
+}
+
+// Search prompts the user to select n cards from a slice of cards
+func (p *Player) Search(cards []*Card, min int, max int, cancellable bool) []*Card {
+	result := make([]*Card, 0)
+
+	p.Action(
+		cards,
+		min,
+		max,
+		cancellable,
+		func(action []string) {
+			for _, id := range action {
+				c, err := p.GetCard(id)
+				if err != nil {
+					logrus.Debugf("Search: %s", err)
+					return
+				}
+
+				result = append(result, c)
+			}
+			return
+		},
+		func() {})
+
+	return result
 }
 
 // SearchAction is an action that prompts the user to select n cards from a slice of cards

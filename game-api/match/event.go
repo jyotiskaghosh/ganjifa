@@ -9,8 +9,8 @@ type EndTurnEvent struct{}
 
 // PlayCardEvent is fired when the player attempts to play a card
 type PlayCardEvent struct {
-	ID      string
-	Targets []string
+	ID       string
+	TargetID string
 }
 
 // CardMoved is fired from the *Player.MoveCard method after moving a card between containers
@@ -20,13 +20,8 @@ type CardMoved struct {
 	To   Container
 }
 
-// AttackPlayer is fired when the player attempts to use a creature to attack the player
-type AttackPlayer struct {
-	ID string
-}
-
-// AttackCreature is fired when the player attempts to use a creature to attack a creature
-type AttackCreature struct {
+// AttackEvent is fired when the player attempts to use a creature to attack a creature or the opponent
+type AttackEvent struct {
 	ID       string
 	TargetID string
 }

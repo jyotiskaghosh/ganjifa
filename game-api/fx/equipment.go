@@ -1,6 +1,8 @@
 package fx
 
 import (
+	"fmt"
+
 	"github.com/jyotiskaghosh/ganjifa/game-api/match"
 	"github.com/sirupsen/logrus"
 )
@@ -11,12 +13,7 @@ func Equipment(card *match.Card, ctx *match.Context) {
 	// On card played
 	case *match.PlayCardEvent:
 		if event.ID == card.ID() {
-			if len(event.Targets) <= 0 {
-				ctx.InterruptFlow()
-				return
-			}
-
-			target, err := card.Player().GetCard(event.Targets[0])
+			target, err := card.Player().GetCard(event.TargetID)
 			if err != nil {
 				ctx.InterruptFlow()
 				logrus.Debug(err)
@@ -32,6 +29,7 @@ func Equipment(card *match.Card, ctx *match.Context) {
 			ctx.ScheduleAfter(func() {
 				target.RemoveEquipments()
 				card.AttachTo(target)
+				ctx.Match().Chat("server", fmt.Sprintf("%s equipped %s to %s", card.Player().Name(), card.Name(), target.Name()))
 			})
 		}
 	// When the equipment is played reactively

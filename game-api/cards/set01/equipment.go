@@ -94,7 +94,7 @@ func ScopeLens() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if event, ok := ctx.Event().(*match.GetAttackEvent); ok &&
 					card.AttachedTo() != nil && event.ID == card.AttachedTo().ID() {
-					if _, ok := event.Event.(*match.AttackPlayer); ok {
+					if e, ok := event.Event.(*match.AttackEvent); ok && e.TargetID == "" {
 						event.Attack += 200
 					}
 				}

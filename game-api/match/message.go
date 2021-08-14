@@ -45,7 +45,6 @@ type State struct {
 	MyTurn   bool        `json:"myTurn"`
 	Me       PlayerState `json:"me"`
 	Opponent PlayerState `json:"opponent"`
-	Event    interface{} `json:"event"`
 }
 
 // StateMessage is the message that should be sent to the client for state updates
@@ -69,4 +68,10 @@ type ShowCardsMessage struct {
 	Header  string   `json:"header"`
 	Message string   `json:"message"`
 	Cards   []string `json:"cards"`
+}
+
+// HighlightMessage is used to highlight a creature
+type HighlightMessage struct {
+	Header    string   `json:"header"`
+	Creatures []string `json:"creatures"`
 }

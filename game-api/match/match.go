@@ -17,18 +17,16 @@ type Match struct {
 	mutex *sync.Mutex
 
 	started bool
-	wait    bool // Wait prevents other moves from executing, used to prevent race conditions
 
 	winner *Player
-	Quit   chan bool
+	quit   chan bool
 }
 
 // New returns a new match object
 func New() *Match {
 	return &Match{
 		mutex: &sync.Mutex{},
-		wait:  true,
-		Quit:  make(chan bool),
+		quit:  make(chan bool),
 	}
 }
 
@@ -61,6 +59,11 @@ func (m *Match) PlayerForWriter(w Writer) (*PlayerReference, error) {
 // Started if the game has started
 func (m *Match) Started() bool {
 	return m.started
+}
+
+// Quit if the game has ended
+func (m *Match) Quit() <-chan bool {
+	return m.quit
 }
 
 // Winner returns true or false based on if the playerref is the winner
@@ -107,6 +110,18 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 		}
 	}()
 
+	if pr.Player.wait {
+		Warn(pr, "waiting for an action to resolve")
+		return
+	}
+
+	m.player1.Player.waiting(true)
+	m.player2.Player.waiting(true)
+	defer func() {
+		m.player1.Player.waiting(false)
+		m.player2.Player.waiting(false)
+	}()
+
 	var msg Message
 	if err := json.Unmarshal(data, &msg); err != nil {
 		return
@@ -138,33 +153,15 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 		}
 	case "end_turn":
 		{
-			if !pr.Player.turn {
-				return
+			if pr.Player.turn {
+				m.EndTurn()
 			}
-
-			if m.wait {
-				Warn(pr, "waiting for players to make an action")
-				return
-			}
-
-			m.waiting(true)
-			defer m.waiting(false)
-
-			m.EndTurn()
 		}
 	case "set_card":
 		{
 			if !pr.Player.turn {
 				return
 			}
-
-			if m.wait {
-				Warn(pr, "waiting for players to make an action")
-				return
-			}
-
-			m.waiting(true)
-			defer m.waiting(false)
 
 			var msg struct {
 				ID string `json:"id"`
@@ -191,23 +188,14 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
-			if m.wait {
-				Warn(pr, "waiting for players to make an action")
-				return
-			}
-
-			m.waiting(true)
-			defer m.waiting(false)
-
 			msg := PlayCardEvent{}
 			if err := json.Unmarshal(data, &msg); err != nil {
 				logrus.Debug(err)
 				return
 			}
 
-			if ok := pr.Player.HasCard(HAND, msg.ID); ok &&
-				AssertCardsIn(append(pr.Player.GetCreatures(), m.Opponent(pr.Player).GetCreatures()...), msg.Targets) {
-				m.PlayCard(msg.ID, msg.Targets)
+			if ok := pr.Player.HasCard(HAND, msg.ID); ok {
+				m.PlayCard(msg.ID, msg.TargetID)
 			}
 		}
 	case "action":
@@ -230,68 +218,34 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				cards = append(cards, card)
 			}
 
-			pr.Player.Action <- cards
+			if pr.Player.action != nil {
+				pr.Player.action <- cards
+			}
 		}
 	case "cancel":
 		{
-			pr.Player.Cancel <- true
+			if pr.Player.cancel != nil {
+				pr.Player.cancel <- true
+			}
 		}
-	case "attack_player":
+	case "attack":
 		{
 			if !pr.Player.turn {
 				return
 			}
-
-			if m.wait {
-				Warn(pr, "waiting for players to make an action")
-				return
-			}
-
-			m.waiting(true)
-			defer m.waiting(false)
 
 			if pr.Player.turnNo == 1 && pr == m.player1 {
 				Warn(pr, "player 1 can't attack on first turn")
 				return
 			}
 
-			var msg struct {
-				ID string `json:"id"`
-			}
+			msg := AttackEvent{}
 			if err := json.Unmarshal(data, &msg); err != nil {
 				logrus.Debug(err)
 				return
 			}
 
-			m.AttackPlayer(pr, msg.ID)
-		}
-	case "attack_creature":
-		{
-			if !pr.Player.turn {
-				return
-			}
-
-			if m.wait {
-				Warn(pr, "waiting for players to make an action")
-				return
-			}
-
-			m.waiting(true)
-			defer m.waiting(false)
-
-			if pr.Player.turnNo == 1 && pr == m.player1 {
-				Warn(pr, "player 1 can't attack on first turn")
-				return
-			}
-
-			msg := AttackCreature{}
-
-			if err := json.Unmarshal(data, &msg); err != nil {
-				logrus.Debug(err)
-				return
-			}
-
-			m.AttackCreature(pr, msg.ID, msg.TargetID)
+			m.Attack(pr, msg.ID, msg.TargetID)
 		}
 	default:
 		logrus.Debugf("Received message in incorrect format: %v", string(data))
@@ -303,7 +257,6 @@ func (m *Match) Opponent(p *Player) *Player {
 	if m.player1.Player == p {
 		return m.player2.Player
 	}
-
 	return m.player1.Player
 }
 
@@ -312,11 +265,10 @@ func (m *Match) CurrentPlayer() *PlayerReference {
 	if m.player1.Player.turn {
 		return m.player1
 	}
-
 	return m.player2
 }
 
-// Chat sends a chat message with color
+// Chat sends a chat message
 func (m *Match) Chat(sender string, message string) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -333,6 +285,15 @@ func (m *Match) Chat(sender string, message string) {
 
 	m.player1.Write(msg)
 	m.player2.Write(msg)
+}
+
+// MessagePlayer sends a chat message from the server to the specified player
+func (m *Match) MessagePlayer(p *Player, message string) {
+	m.WritePlayer(p, ChatMessage{
+		Header:  "chat",
+		Message: message,
+		Sender:  "server",
+	})
 }
 
 // WritePlayer sends a message to a player
@@ -410,6 +371,8 @@ func (m *Match) CollectCards() []*Card {
 
 // HandleFx ...
 func (m *Match) HandleFx(ctx *Context) {
+	defer m.BroadcastState()
+
 	for _, c := range m.CollectCards() {
 		for _, h := range c.GetHandlers(ctx) {
 			h(c, ctx)
@@ -426,7 +389,7 @@ func (m *Match) HandleFx(ctx *Context) {
 }
 
 // BroadcastState sends the current game's state to both players, hiding the opponent's hand
-func (m *Match) BroadcastState(event interface{}) {
+func (m *Match) BroadcastState() {
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Warnf("Recovered from panic during sending state update. %v", r)
@@ -452,7 +415,6 @@ func (m *Match) BroadcastState(event interface{}) {
 			MyTurn:   m.player2.Player.turn,
 			Me:       player2,
 			Opponent: player1,
-			Event:    event,
 		},
 	}
 
@@ -474,7 +436,8 @@ func (m *Match) End(winner *Player, reason string) {
 
 	m.winner = winner
 
-	m.Quit <- true
+	m.quit <- true
+	close(m.quit)
 }
 
 // NewAction prompts the user to make a selection of the specified []Cards
@@ -505,6 +468,13 @@ func (m *Match) ShowCards(p *Player, message string, cards []string) {
 	})
 }
 
+// Highlight highlights creatures
+func (m *Match) Highlight(ids ...string) {
+	msg := HighlightMessage{"highlight", append(make([]string, 0), ids...)}
+	m.player1.Write(msg)
+	m.player2.Write(msg)
+}
+
 // changeCurrentPlayer changes the current player
 func (m *Match) changeCurrentPlayer() {
 	m.player1.Player.turn = !m.player1.Player.turn
@@ -513,8 +483,6 @@ func (m *Match) changeCurrentPlayer() {
 
 // start starts the match
 func (m *Match) start() {
-	defer m.waiting(false)
-
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
@@ -532,14 +500,6 @@ func (m *Match) start() {
 	m.changeCurrentPlayer()
 
 	m.beginNewTurn()
-}
-
-// waiting assigns bool value to m.wait
-func (m *Match) waiting(wait bool) {
-	m.mutex.Lock()
-	defer m.mutex.Unlock()
-
-	m.wait = wait
 }
 
 // beginNewTurn starts a new turn
@@ -561,32 +521,22 @@ func (m *Match) untapStep() {
 
 // startOfTurnStep ...
 func (m *Match) startOfTurnStep() {
-	ctx := NewContext(m, &StartOfTurnStep{})
-	m.HandleFx(ctx)
+	m.HandleFx(NewContext(m, &StartOfTurnStep{}))
 
 	m.drawStep()
-
-	m.BroadcastState(ctx.event)
 }
 
 // drawStep ...
 func (m *Match) drawStep() {
-	ctx := NewContext(m, &DrawStep{})
-	m.HandleFx(ctx)
+	m.HandleFx(NewContext(m, &DrawStep{}))
 
 	p := m.CurrentPlayer().Player
-
 	p.DrawCards(1)
-
-	m.BroadcastState(ctx.event)
 }
 
 // endStep ...
 func (m *Match) endStep() {
-	ctx := NewContext(m, &EndStep{})
-	m.HandleFx(ctx)
-
-	m.BroadcastState(ctx.event)
+	m.HandleFx(NewContext(m, &EndStep{}))
 
 	m.beginNewTurn()
 }
@@ -603,38 +553,23 @@ func (m *Match) EndTurn() {
 }
 
 // PlayCard is called when the player attempts to play a card
-func (m *Match) PlayCard(id string, targets []string) {
+func (m *Match) PlayCard(id string, targetID string) {
+	m.Highlight(targetID)
+	defer m.Highlight()
+
 	ctx := NewContext(m, &PlayCardEvent{
-		ID:      id,
-		Targets: targets,
+		ID:       id,
+		TargetID: targetID,
 	})
 	m.HandleFx(ctx)
-
-	m.BroadcastState(ctx.event)
 }
 
-// AttackPlayer is called when the player attempts to attack the opposing player
-func (m *Match) AttackPlayer(pr *PlayerReference, id string) {
-	ctx := NewContext(m, &AttackPlayer{
-		ID: id,
-	})
-	m.HandleFx(ctx)
+// Attack is called when the player attempts to attack an opponent's creature
+func (m *Match) Attack(pr *PlayerReference, id string, targetID string) {
+	m.Highlight(id, targetID)
+	defer m.Highlight()
 
-	// Tap card after attack
-	// card gets tapped even if attack fails, this is done to prevent reusing before attacking effects
-	card, err := m.GetCard(id)
-	if err != nil {
-		logrus.Debug(err)
-	} else {
-		card.Tapped = true
-	}
-
-	m.BroadcastState(ctx.event)
-}
-
-// AttackCreature is called when the player attempts to attack an opponent's creature
-func (m *Match) AttackCreature(pr *PlayerReference, id string, targetID string) {
-	ctx := NewContext(m, &AttackCreature{
+	ctx := NewContext(m, &AttackEvent{
 		ID:       id,
 		TargetID: targetID,
 	})
@@ -649,7 +584,7 @@ func (m *Match) AttackCreature(pr *PlayerReference, id string, targetID string) 
 		card.Tapped = true
 	}
 
-	m.BroadcastState(ctx.event)
+	m.BroadcastState()
 }
 
 // GetCard returns the *Card from a container from either players

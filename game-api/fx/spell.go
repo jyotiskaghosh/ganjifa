@@ -1,6 +1,8 @@
 package fx
 
 import (
+	"fmt"
+
 	"github.com/jyotiskaghosh/ganjifa/game-api/match"
 	"github.com/sirupsen/logrus"
 )
@@ -17,6 +19,7 @@ func Spell(card *match.Card, ctx *match.Context) {
 						if err := card.MoveCard(match.GRAVEYARD); err != nil {
 							logrus.Debug(err)
 						}
+						ctx.Match().Chat("server", fmt.Sprintf("%s played %s", card.Player().Name(), card.Name()))
 					})
 					return
 				}

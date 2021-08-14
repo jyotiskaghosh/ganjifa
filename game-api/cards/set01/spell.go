@@ -21,12 +21,7 @@ func EnergySurge() *match.Card {
 		Handlers: []match.HandlerFunc{
 			func(card *match.Card, ctx *match.Context) {
 				if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-					if len(event.Targets) <= 0 {
-						ctx.InterruptFlow()
-						return
-					}
-
-					target, err := card.Player().GetCard(event.Targets[0])
+					target, err := card.Player().GetCard(event.TargetID)
 					if err != nil {
 						ctx.InterruptFlow()
 						logrus.Debug(err)
@@ -59,12 +54,7 @@ func Fireball() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							if len(event.Targets) <= 0 {
-								ctx.InterruptFlow()
-								return
-							}
-
-							target, err := card.Player().GetCard(event.Targets[0])
+							target, err := ctx.Match().Opponent(card.Player()).GetCard(event.TargetID)
 							if err != nil {
 								ctx.InterruptFlow()
 								logrus.Debug(err)
@@ -125,12 +115,7 @@ func MagmaGeyser() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							if len(event.Targets) <= 0 {
-								ctx.InterruptFlow()
-								return
-							}
-
-							target, err := card.Player().GetCard(event.Targets[0])
+							target, err := ctx.Match().Opponent(card.Player()).GetCard(event.TargetID)
 							if err != nil {
 								ctx.InterruptFlow()
 								logrus.Debug(err)
@@ -165,12 +150,7 @@ func Degenerate() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							if len(event.Targets) <= 0 {
-								ctx.InterruptFlow()
-								return
-							}
-
-							target, err := card.Player().GetCard(event.Targets[0])
+							target, err := ctx.Match().Opponent(card.Player()).GetCard(event.TargetID)
 							if err != nil {
 								ctx.InterruptFlow()
 								logrus.Debug(err)
@@ -201,12 +181,7 @@ func LeechLife() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							if len(event.Targets) <= 0 {
-								ctx.InterruptFlow()
-								return
-							}
-
-							target, err := card.Player().GetCard(event.Targets[0])
+							target, err := card.Player().GetCard(event.TargetID)
 							if err != nil {
 								ctx.InterruptFlow()
 								logrus.Debug(err)
@@ -240,12 +215,7 @@ func RapidEvolution() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							if len(event.Targets) <= 0 {
-								ctx.InterruptFlow()
-								return
-							}
-
-							target, err := card.Player().GetCard(event.Targets[0])
+							target, err := card.Player().GetCard(event.TargetID)
 							if err != nil {
 								ctx.InterruptFlow()
 								logrus.Debug(err)
@@ -320,8 +290,6 @@ func Whirlwind() *match.Card {
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
-						ctx.Match().Chat("Server", fmt.Sprintf("%s played spell %s", card.Player().Name(), card.Name()))
-
 						cards, err := ctx.Match().Opponent(card.Player()).Container(match.TRAPZONE)
 						if err != nil {
 							ctx.InterruptFlow()
@@ -364,12 +332,7 @@ func Tailwind() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							if len(event.Targets) <= 0 {
-								ctx.InterruptFlow()
-								return
-							}
-
-							target, err := card.Player().GetCard(event.Targets[0])
+							target, err := card.Player().GetCard(event.TargetID)
 							if err != nil {
 								ctx.InterruptFlow()
 								logrus.Debug(err)
@@ -400,12 +363,7 @@ func Tornado() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							if len(event.Targets) <= 0 {
-								ctx.InterruptFlow()
-								return
-							}
-
-							target, err := card.Player().GetCard(event.Targets[0])
+							target, err := ctx.Match().Opponent(card.Player()).GetCard(event.TargetID)
 							if err != nil {
 								ctx.InterruptFlow()
 								logrus.Debug(err)
@@ -438,12 +396,7 @@ func FrostBreath() *match.Card {
 				if card.AmIPlayed(ctx) {
 					ctx.ScheduleAfter(func() {
 						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							if len(event.Targets) <= 0 {
-								ctx.InterruptFlow()
-								return
-							}
-
-							target, err := card.Player().GetCard(event.Targets[0])
+							target, err := ctx.Match().Opponent(card.Player()).GetCard(event.TargetID)
 							if err != nil {
 								ctx.InterruptFlow()
 								logrus.Debug(err)

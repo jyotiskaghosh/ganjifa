@@ -12,7 +12,7 @@
       <div @click="redirect('overview')" class="btn">Back to overview</div>
     </div>
 
-    <div v-show="warning" class="error warn">
+    <div v-show="warning" class="error">
       <p>{{ warning }}</p>
       <div @click="warning = ''" class="btn">Close</div>
     </div>
@@ -132,19 +132,27 @@
         </template>
         <template v-if="battlezoneSelection">
           <span>{{ battlezoneSelection.name }}</span>
-          <div @click="attackPlayer()" class="btn">Attack player</div>
-          <div class="spacer"></div>
-          <div @click="attackCreature()" class="btn">Attack creature</div>
+          <div @click="attack()" class="btn">Attack</div>
         </template>
       </div>
 
       <div class="actionbox">
-        <div
+        <template v-if="state.myTurn">
+        <div 
           @click="endTurn()"
-          :class="['btn', 'block', { disabled: !state.myTurn }]"
+          :class="['btn', 'block']"
         >
           End turn
         </div>
+        </template>
+        <template v-if="!state.myTurn">
+        <div
+          @click="cancelAction()"
+          :class="['btn', 'block']"
+        >
+          Cancel
+        </div>
+        </template>
       </div>
     </div>
 
@@ -267,7 +275,9 @@
             :key="index"
             :class="['card', { tapped: card.tapped }]"
           >
-            <img class="flipped" :src="`/assets/cards/all/${card.uid}.jpg`" />
+            <img 
+              :class="['flipped', highlight.includes(card.id) ? 'glow-' + card.civilization : '']" 
+              :src="`/assets/cards/all/${card.uid}.jpg`" />
           </div>
         </div>      
       </div>
@@ -320,7 +330,7 @@
           >
             <img
               :class="
-                battlezoneSelection === card ? 'glow-' + card.civilization : ''
+                battlezoneSelection === card || highlight.includes(card.id) ? 'glow-' + card.civilization : ''
               "
               :src="`/assets/cards/all/${card.uid}.jpg`"
             />
@@ -415,6 +425,7 @@ export default {
       handSelection: null,
 
       battlezoneSelection: null,
+      highlight: [],
 
       action: null,
       actionError: "",
@@ -477,9 +488,6 @@ export default {
     },
 
     cancelAction() {
-      if (!this.action || !this.action.cancellable) {
-        return;
-      }
       this.ws.send(JSON.stringify({ header: "cancel"}));
     },
 
@@ -547,27 +555,12 @@ export default {
       }
       this.battlezoneSelection = card;
     },
-
-    attackPlayer() {
-      if (!this.battlezoneSelection) {
-        return;
-      }
-      this.ws.send(
-        JSON.stringify({
-          header: "attack_player",
-          id: this.battlezoneSelection.id
-        })
-      );
-    },
     
-    attackCreature() {
-      if (!this.battlezoneSelection) {
-        return;
-      }
+    attack() {
       this.ws.send(
         JSON.stringify({
-          header: "attack_creature",
-          id: this.battlezoneSelection.id
+          header: "attack",
+          id: this.battlezoneSelection != null? this.battlezoneSelection.id: ""
         })
       );
     }
@@ -665,6 +658,11 @@ export default {
           this.actionSelects = [];
           this.actionObject = null;
           this.actionDrowdownSelection = null;
+          break;
+        }
+
+        case "highlight": {
+          this.highlight = data.creatures;
           break;
         }
 
