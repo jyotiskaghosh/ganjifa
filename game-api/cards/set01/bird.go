@@ -14,9 +14,9 @@ func Kukkutah() *match.Card {
 		Rank:    0,
 		Civ:     civ.VAYU,
 		Family:  family.Bird,
-		Attack:  200,
-		Defence: 200,
-		Handlers: []match.HandlerFunc{
+		Attack:  2,
+		Defence: 2,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 		},
 	}
@@ -31,9 +31,9 @@ func Cataka() *match.Card {
 		Rank:    0,
 		Civ:     civ.VAYU,
 		Family:  family.Bird,
-		Attack:  100,
-		Defence: 100,
-		Handlers: []match.HandlerFunc{
+		Attack:  1,
+		Defence: 1,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			fx.CantBeAttacked,
 		},
@@ -49,14 +49,14 @@ func Syena() *match.Card {
 		Rank:    1,
 		Civ:     civ.VAYU,
 		Family:  family.Bird,
-		Attack:  300,
-		Defence: 300,
-		Handlers: []match.HandlerFunc{
+		Attack:  3,
+		Defence: 3,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.ID == card.ID() {
-					if e, ok := event.Event.(*match.AttackEvent); ok && e.TargetID == "" {
-						event.Attack += 400
+					if _, ok := event.Event.(*match.AttackPlayer); ok {
+						event.Attack += 4
 					}
 				}
 			},
@@ -73,9 +73,9 @@ func Atayi() *match.Card {
 		Rank:    1,
 		Civ:     civ.VAYU,
 		Family:  family.Bird,
-		Attack:  400,
-		Defence: 200,
-		Handlers: []match.HandlerFunc{
+		Attack:  4,
+		Defence: 2,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 				if event, ok := ctx.Event().(*match.DamageEvent); ok && card.Zone() == match.BATTLEZONE && event.Player != card.Player() {

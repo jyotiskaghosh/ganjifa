@@ -1,10 +1,22 @@
 package match
 
 import (
+	"errors"
+
 	"github.com/jyotiskaghosh/ganjifa/game-api/family"
 
 	"github.com/sirupsen/logrus"
 )
+
+// GetCard returns a pointer to a Card by its ID from the given containers
+func GetCard(id string, cards []*Card) (*Card, error) {
+	for _, card := range cards {
+		if card.id == id {
+			return card, nil
+		}
+	}
+	return nil, errors.New("Card was not found")
+}
 
 // AssertCardsIn returns true or false based on if the specified card ids are present in the source []*Card
 func AssertCardsIn(src []*Card, test ...string) bool {
@@ -27,12 +39,12 @@ func AssertCardsIn(src []*Card, test ...string) bool {
 
 // Devolve ...
 func Devolve(card *Card, src *Card) {
-	cards := card.player.SearchAction(
+	cards := card.player.Search(
 		Filter(card.Attachments(), func(x *Card) bool { return x.Family() != family.Equipment }),
 		"Select a card",
 		1,
 		1,
-		false)
+		true)
 
 	if len(cards) < 1 {
 		card.player.match.Destroy(card, src)
@@ -68,4 +80,38 @@ func Filter(cards []*Card, filter func(*Card) bool) []*Card {
 	}
 
 	return filtered
+}
+
+// AllContainers returns an array of all containers
+func AllContainers() []Container {
+	return []Container{
+		BATTLEZONE,
+		SOUL,
+		TRAPZONE,
+		HAND,
+		GRAVEYARD,
+		DECK,
+	}
+}
+
+// hideCards takes an array of *Card and returns an array of empty CardStates
+func hideCards(cards *[]CardState) []CardState {
+	arr := make([]CardState, 0)
+
+	for _, c := range *cards {
+		arr = append(arr, CardState{ID: c.ID})
+	}
+
+	return arr
+}
+
+// denormalizeCards takes an array of *Card and returns an array of CardState
+func denormalizeCards(cards []*Card) []CardState {
+	arr := make([]CardState, 0)
+
+	for _, c := range cards {
+		arr = append(arr, c.denormalizeCard())
+	}
+
+	return arr
 }

@@ -35,7 +35,6 @@ A game state consists of the following card containers/zones
 3. Main Phase
 
    In the main phase you can play creatures, spells, equipments, set down cards and also attack with creatures in any order.
-   After you use a creature to attack it becomes tapped.
    If you are the starting player you can't attack on the first turn.
    When you attack your opponent and aren't blocked, you damage your opponent's life!
 
@@ -67,6 +66,8 @@ There are only three card types in the game, they are:
               They have Attack and Defence which are used in Battle and also have a Family.
               Any creature above rank 0 can only be played by evolving a creature in the battlezone who shares the same family(unless stated otherwise)
               and has rank one less than, equal or more than the creature.
+              After you use a creature to attack it becomes tapped.
+              Creatures Can attack only opponent's tapped creatures.
 2. Spells: Are cards that have various effects to alter the play of the game, and are usually sent to the graveyard after it's cast.
            Often, a Spell Card has a single effect to provide a bonus to the user or a weakness to the opponent.
            Spells Can't be cast unless there is an untapped creature who shares their civilization and has rank higher or equal to their own in the battlezone.

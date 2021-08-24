@@ -15,44 +15,44 @@ import (
 type Card struct {
 	id string
 
-	cardID   int
-	name     string
-	rank     int
-	civ      civ.Civilisation
-	family   string
-	attack   int
-	defence  int
-	handlers []HandlerFunc
+	cardID  int
+	name    string
+	rank    uint8
+	civ     civ.Civilisation
+	family  string
+	attack  uint8
+	defence uint8
+	effects []HandlerFunc
 
 	zone       Container
 	Tapped     bool
 	attachedTo *Card
-	conditions []HandlerFunc // Temporary handlers
+	conditions []HandlerFunc // Temporary effects
 
 	player *Player
 }
 
 // CardBuilder is a builder for Card
 type CardBuilder struct {
-	Name     string
-	Rank     int
-	Civ      civ.Civilisation
-	Family   string
-	Attack   int
-	Defence  int
-	Handlers []HandlerFunc
+	Name    string
+	Rank    uint8
+	Civ     civ.Civilisation
+	Family  string
+	Attack  uint8
+	Defence uint8
+	Effects []HandlerFunc
 }
 
 // Build constructs a card with the values of CardBuilder
 func (cb *CardBuilder) Build() *Card {
 	return &Card{
-		name:     cb.Name,
-		rank:     cb.Rank,
-		civ:      cb.Civ,
-		family:   cb.Family,
-		attack:   cb.Attack,
-		defence:  cb.Defence,
-		handlers: cb.Handlers,
+		name:    cb.Name,
+		rank:    cb.Rank,
+		civ:     cb.Civ,
+		family:  cb.Family,
+		attack:  cb.Attack,
+		defence: cb.Defence,
+		effects: cb.Effects,
 	}
 }
 
@@ -93,7 +93,7 @@ func (c *Card) Name() string {
 }
 
 // Rank ...
-func (c *Card) Rank() int {
+func (c *Card) Rank() uint8 {
 	return c.rank
 }
 
@@ -108,12 +108,12 @@ func (c *Card) Family() string {
 }
 
 // Attack ...
-func (c *Card) Attack() int {
+func (c *Card) Attack() uint8 {
 	return c.attack
 }
 
 // Defence ...
-func (c *Card) Defence() int {
+func (c *Card) Defence() uint8 {
 	return c.defence
 }
 
@@ -127,14 +127,9 @@ func (c *Card) Player() *Player {
 	return c.player
 }
 
-// Conditions returns all conditions
-func (c *Card) Conditions() []HandlerFunc {
-	return c.conditions
-}
-
 // AddCondition adds temporary handler functions
-func (c *Card) AddCondition(handlers ...HandlerFunc) {
-	c.conditions = append(c.conditions, handlers...)
+func (c *Card) AddCondition(effects ...HandlerFunc) {
+	c.conditions = append(c.conditions, effects...)
 }
 
 // RemoveCondition removes all instances of the given handler from the cards conditions
@@ -164,13 +159,7 @@ func (c *Card) AttachedTo() *Card {
 func (c *Card) Attachments() []*Card {
 	result := make([]*Card, 0)
 
-	cards, err := c.player.Container(SOUL)
-	if err != nil {
-		logrus.Debugf("Attachments: %s", err)
-		return result
-	}
-
-	for _, card := range cards {
+	for _, card := range c.player.CollectCards(SOUL) {
 		if card.attachedTo == c {
 			result = append(result, card)
 		}
@@ -181,16 +170,17 @@ func (c *Card) Attachments() []*Card {
 
 // AttachTo attaches c to card
 func (c *Card) AttachTo(card *Card) {
-	if c.player != card.player || card.zone != BATTLEZONE || c == card {
+	if card.zone != BATTLEZONE {
+		logrus.Debug("Can't attach card to creature not on battlezone")
 		return
 	}
+
+	c.attachedTo = card
 
 	if err := c.MoveCard(SOUL); err != nil {
 		logrus.Debugf("AttachTo: %s", err)
 		return
 	}
-
-	c.attachedTo = card
 }
 
 // Detach detaches a card
@@ -238,7 +228,6 @@ func (c *Card) MoveCard(destination Container) error {
 
 	for _, card := range c.Attachments() {
 		card.attachedTo = c.attachedTo
-
 		c.MoveCard(destination)
 	}
 
@@ -246,7 +235,7 @@ func (c *Card) MoveCard(destination Container) error {
 }
 
 // GetRank returns the rank of a given card
-func (c *Card) GetRank(ctx *Context) int {
+func (c *Card) GetRank(ctx *Context) uint8 {
 	e := &GetRankEvent{
 		ID:    c.id,
 		Event: ctx.event,
@@ -282,7 +271,7 @@ func (c *Card) GetFamily(ctx *Context) map[string]bool {
 }
 
 // GetAttack returns the attack of a given card
-func (c *Card) GetAttack(ctx *Context) int {
+func (c *Card) GetAttack(ctx *Context) uint8 {
 	e := &GetAttackEvent{
 		ID:     c.id,
 		Event:  ctx.event,
@@ -294,7 +283,7 @@ func (c *Card) GetAttack(ctx *Context) int {
 }
 
 // GetDefence returns the defence of a given card
-func (c *Card) GetDefence(ctx *Context) int {
+func (c *Card) GetDefence(ctx *Context) uint8 {
 	e := &GetDefenceEvent{
 		ID:      c.id,
 		Event:   ctx.event,
@@ -305,36 +294,13 @@ func (c *Card) GetDefence(ctx *Context) int {
 	return e.Defence
 }
 
-// GetHandlers returns the HandlerFuncs of a given card
-func (c *Card) GetHandlers(ctx *Context) []HandlerFunc {
-	e := &GetHandlerEvent{
-		ID:       c.id,
-		Event:    ctx.event,
-		Handlers: append(c.handlers, c.conditions...),
-	}
-	ctx = NewContext(ctx.match, e)
-
-	for _, card := range ctx.match.CollectCards() {
-		for _, h := range append(card.handlers, card.conditions...) {
-			if ctx.cancel {
-				break
-			}
-
-			h(card, ctx)
-		}
-	}
-
-	return e.Handlers
-}
-
 // HasHandler returns true or false based on if c has the specified handler
 func (c *Card) HasHandler(handler HandlerFunc, ctx *Context) bool {
-	for _, condition := range c.GetHandlers(ctx) {
+	for _, condition := range append(c.effects, c.conditions...) {
 		if reflect.ValueOf(condition).Pointer() == reflect.ValueOf(handler).Pointer() {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -345,7 +311,6 @@ func (c *Card) HasFamily(family string, ctx *Context) bool {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -356,7 +321,6 @@ func (c *Card) HasCivilisation(civilisation civ.Civilisation, ctx *Context) bool
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -396,6 +360,26 @@ func (c *Card) EvolveTo(card *Card) {
 	c.player.match.Chat("Server", fmt.Sprintf("%s evolved %s to %s", c.player.Name(), c.name, card.name))
 }
 
+// SpellCast handles spell cast
+func (c *Card) SpellCast(ctx *Context, fx func() []*Card) {
+	for _, creature := range c.player.CollectCards(BATTLEZONE) {
+		if creature.HasCivilisation(c.civ, ctx) &&
+			c.GetRank(ctx) <= creature.GetRank(ctx) &&
+			!creature.Tapped {
+			ctx.ScheduleAfter(func() {
+				ctx.match.SpellCast(c.id, fx())
+
+				if err := c.MoveCard(GRAVEYARD); err != nil {
+					logrus.Debug(err)
+				}
+				ctx.match.Chat("server", fmt.Sprintf("%s played %s", c.player.name, c.name))
+			})
+			return
+		}
+	}
+	ctx.InterruptFlow()
+}
+
 // denormalizeCard returns the CardState of a card
 func (c *Card) denormalizeCard() CardState {
 	return CardState{
@@ -406,15 +390,4 @@ func (c *Card) denormalizeCard() CardState {
 		Tapped:        c.Tapped,
 		AttachedCards: denormalizeCards(c.Attachments()),
 	}
-}
-
-// denormalizeCards takes an array of *Card and returns an array of CardState
-func denormalizeCards(cards []*Card) []CardState {
-	arr := make([]CardState, 0)
-
-	for _, c := range cards {
-		arr = append(arr, c.denormalizeCard())
-	}
-
-	return arr
 }

@@ -14,8 +14,8 @@ func Churika() *match.Card {
 		Rank:   0,
 		Civ:    civ.AGNI,
 		Family: family.Equipment,
-		Attack: 300,
-		Handlers: []match.HandlerFunc{
+		Attack: 2,
+		Effects: []match.HandlerFunc{
 			fx.Equipment,
 		},
 	}
@@ -30,8 +30,8 @@ func Khadga() *match.Card {
 		Rank:   1,
 		Civ:    civ.AGNI,
 		Family: family.Equipment,
-		Attack: 600,
-		Handlers: []match.HandlerFunc{
+		Attack: 4,
+		Effects: []match.HandlerFunc{
 			fx.Equipment,
 		},
 	}
@@ -43,11 +43,11 @@ func Khadga() *match.Card {
 func VampireFangs() *match.Card {
 	cb := match.CardBuilder{
 		Name:   "Vampire Fangs",
-		Rank:   0,
+		Rank:   1,
 		Civ:    civ.PRITHVI,
 		Family: family.Equipment,
-		Attack: 100,
-		Handlers: []match.HandlerFunc{
+		Attack: 2,
+		Effects: []match.HandlerFunc{
 			fx.Equipment,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AttachedTo() != nil {
@@ -63,12 +63,11 @@ func VampireFangs() *match.Card {
 // WindCloak ...
 func WindCloak() *match.Card {
 	cb := match.CardBuilder{
-		Name:    "Wind Cloak",
-		Rank:    0,
-		Civ:     civ.VAYU,
-		Family:  family.Equipment,
-		Defence: 100,
-		Handlers: []match.HandlerFunc{
+		Name:   "Wind Cloak",
+		Rank:   0,
+		Civ:    civ.VAYU,
+		Family: family.Equipment,
+		Effects: []match.HandlerFunc{
 			fx.Equipment,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AttachedTo() != nil {
@@ -88,14 +87,14 @@ func ScopeLens() *match.Card {
 		Rank:   0,
 		Civ:    civ.VAYU,
 		Family: family.Equipment,
-		Attack: 200,
-		Handlers: []match.HandlerFunc{
+		Attack: 1,
+		Effects: []match.HandlerFunc{
 			fx.Equipment,
 			func(card *match.Card, ctx *match.Context) {
 				if event, ok := ctx.Event().(*match.GetAttackEvent); ok &&
 					card.AttachedTo() != nil && event.ID == card.AttachedTo().ID() {
-					if e, ok := event.Event.(*match.AttackEvent); ok && e.TargetID == "" {
-						event.Attack += 200
+					if _, ok := event.Event.(*match.AttackPlayer); ok {
+						event.Attack += 2
 					}
 				}
 			},
@@ -112,8 +111,8 @@ func ShellArmor() *match.Card {
 		Rank:    0,
 		Civ:     civ.APAS,
 		Family:  family.Equipment,
-		Defence: 300,
-		Handlers: []match.HandlerFunc{
+		Defence: 2,
+		Effects: []match.HandlerFunc{
 			fx.Equipment,
 		},
 	}

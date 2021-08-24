@@ -242,7 +242,7 @@ func (m *Match) Parse(s *server.Socket, data []byte) {
 	switch message.Header {
 	case "join_match":
 		{
-			if _, err := m.match.AddPlayer(s); err != nil {
+			if err := m.match.AddPlayer(s.User.Username, s); err != nil {
 				s.Write(match.ChatMessage{
 					Header:  "warn",
 					Message: err.Error(),
@@ -278,10 +278,6 @@ func (m *Match) Parse(s *server.Socket, data []byte) {
 				if deck.Owner == s.User.UID || deck.Standard {
 					decks = append(decks, deck)
 				}
-
-				if deck.Owner == s.User.UID || deck.Standard {
-					decks = append(decks, deck)
-				}
 			}
 
 			s.Write(server.DecksMessage{
@@ -302,20 +298,16 @@ func (m *Match) Parse(s *server.Socket, data []byte) {
 			m.match.Chat(s.User.Username, msg.Message)
 		}
 	default:
-		{
-			pr, err := m.match.PlayerForWriter(s)
-			if err != nil {
-				return
-			}
-			m.match.Parse(pr, data)
-		}
+		m.match.Parse(s, data)
 	}
 }
 
 // OnSocketClose is called when a socket disconnects
 func (m *Match) OnSocketClose(s *server.Socket) {
-	if pr, err := m.match.PlayerForWriter(s); err == nil {
-		match.Warn(pr, "Your opponent disconnected, the match will close soon.")
-		m.match.End(m.match.Opponent(pr.Player), "opponent disconnected")
+	if p, err := m.match.PlayerForWriter(s); err == nil {
+		match.Warn(p, "Your opponent disconnected, the match will close soon.")
+		if !m.ending {
+			m.match.End(m.match.Opponent(p), "opponent disconnected")
+		}
 	}
 }

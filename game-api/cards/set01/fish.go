@@ -14,20 +14,20 @@ func Matsyaka() *match.Card {
 		Rank:    0,
 		Civ:     civ.APAS,
 		Family:  family.Fish,
-		Attack:  100,
-		Defence: 100,
-		Handlers: []match.HandlerFunc{
+		Attack:  1,
+		Defence: 1,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 				if event, ok := ctx.Event().(*match.GetAttackEvent); ok {
 					if card.AttachedTo() != nil && event.ID == card.AttachedTo().ID() {
-						event.Attack += 100
+						event.Attack++
 					}
 				}
 
 				if event, ok := ctx.Event().(*match.GetDefenceEvent); ok {
 					if card.AttachedTo() != nil && event.ID == card.AttachedTo().ID() {
-						event.Defence += 100
+						event.Defence++
 					}
 				}
 			},
@@ -44,9 +44,9 @@ func DeadlyZebrafish() *match.Card {
 		Rank:    0,
 		Civ:     civ.APAS,
 		Family:  family.Fish,
-		Attack:  100,
-		Defence: 100,
-		Handlers: []match.HandlerFunc{
+		Attack:  1,
+		Defence: 1,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			fx.Poisonous,
 		},
@@ -62,9 +62,9 @@ func TorpedoingBarracuda() *match.Card {
 		Rank:    1,
 		Civ:     civ.APAS,
 		Family:  family.Fish,
-		Attack:  300,
-		Defence: 100,
-		Handlers: []match.HandlerFunc{
+		Attack:  3,
+		Defence: 1,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			fx.CantBeBlocked,
 		},

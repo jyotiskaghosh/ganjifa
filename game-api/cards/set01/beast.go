@@ -17,16 +17,16 @@ func Salavrka() *match.Card {
 		Rank:    0,
 		Civ:     civ.PRITHVI,
 		Family:  family.Beast,
-		Attack:  100,
-		Defence: 100,
-		Handlers: []match.HandlerFunc{
+		Attack:  1,
+		Defence: 1,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 				if cards, err := card.Player().Container(match.BATTLEZONE); err == nil {
 					for _, c := range cards {
 						if c != card && c.Family() == family.Beast {
-							fx.AttackModifier(card, ctx, 100)
-							fx.DefenceModifier(card, ctx, 100)
+							fx.AttackModifier(card, ctx, 1)
+							fx.DefenceModifier(card, ctx, 1)
 						}
 					}
 				}
@@ -44,9 +44,9 @@ func Vanara() *match.Card {
 		Rank:    0,
 		Civ:     civ.PRITHVI,
 		Family:  family.Beast,
-		Attack:  200,
-		Defence: 200,
-		Handlers: []match.HandlerFunc{
+		Attack:  2,
+		Defence: 2,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 		},
 	}
@@ -61,9 +61,9 @@ func Krostr() *match.Card {
 		Rank:    1,
 		Civ:     civ.PRITHVI,
 		Family:  family.Beast,
-		Attack:  200,
-		Defence: 200,
-		Handlers: []match.HandlerFunc{
+		Attack:  2,
+		Defence: 2,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
@@ -75,7 +75,7 @@ func Krostr() *match.Card {
 							return
 						}
 
-						cards = card.Player().SearchAction(
+						cards = card.Player().Search(
 							match.Filter(cards, func(x *match.Card) bool { return x.Family() == family.Beast }),
 							fmt.Sprintf("Select 1 %s", family.Beast),
 							1,
@@ -108,9 +108,9 @@ func Dvipin() *match.Card {
 		Rank:    1,
 		Civ:     civ.PRITHVI,
 		Family:  family.Beast,
-		Attack:  400,
-		Defence: 200,
-		Handlers: []match.HandlerFunc{
+		Attack:  4,
+		Defence: 2,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			fx.Ambush,
 		},
@@ -126,9 +126,9 @@ func Simha() *match.Card {
 		Rank:    2,
 		Civ:     civ.PRITHVI,
 		Family:  family.Beast,
-		Attack:  900,
-		Defence: 700,
-		Handlers: []match.HandlerFunc{
+		Attack:  9,
+		Defence: 7,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 		},
 	}

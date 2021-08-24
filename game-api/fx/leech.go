@@ -17,13 +17,15 @@ func Leech(card *match.Card, ctx *match.Context) {
 	case *match.CreatureDestroyed:
 		if event.Source == card {
 			ctx.ScheduleAfter(func() {
-				card, err := ctx.Match().GetCard(event.ID)
+				c, err := match.GetCard(
+					event.ID,
+					ctx.Match().Opponent(card.Player()).CollectCards(match.GRAVEYARD))
 				if err != nil {
 					logrus.Debug(err)
 					return
 				}
 
-				card.Player().Heal(card, ctx, card.GetDefence(ctx))
+				card.Player().Heal(card, ctx, c.GetDefence(ctx))
 			})
 		}
 	}

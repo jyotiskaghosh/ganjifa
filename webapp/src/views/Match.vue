@@ -132,7 +132,9 @@
         </template>
         <template v-if="battlezoneSelection">
           <span>{{ battlezoneSelection.name }}</span>
-          <div @click="attack()" class="btn">Attack</div>
+          <div @click="attackPlayer()" class="btn">Attack player</div>
+          <div class="spacer"></div>
+          <div @click="attackCreature()" class="btn">Attack creature</div>
         </template>
       </div>
 
@@ -140,17 +142,9 @@
         <template v-if="state.myTurn">
         <div 
           @click="endTurn()"
-          :class="['btn', 'block']"
+          :class="['btn', 'block', { disabled: !state.myTurn }]"
         >
           End turn
-        </div>
-        </template>
-        <template v-if="!state.myTurn">
-        <div
-          @click="cancelAction()"
-          :class="['btn', 'block']"
-        >
-          Cancel
         </div>
         </template>
       </div>
@@ -556,10 +550,19 @@ export default {
       this.battlezoneSelection = card;
     },
     
-    attack() {
+    attackPlayer() {
       this.ws.send(
         JSON.stringify({
-          header: "attack",
+          header: "attack_player",
+          id: this.battlezoneSelection != null? this.battlezoneSelection.id: ""
+        })
+      );
+    },
+
+    attackCreature() {
+      this.ws.send(
+        JSON.stringify({
+          header: "attack_creature",
           id: this.battlezoneSelection != null? this.battlezoneSelection.id: ""
         })
       );

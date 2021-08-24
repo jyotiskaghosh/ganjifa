@@ -23,27 +23,18 @@ const (
 )
 
 // LIFE is the default life of player
-const LIFE int = 2000
+const LIFE int = 20
 
 // Writer is the interface for the output
 type Writer interface {
 	Write(interface{})
 }
 
-// PlayerReference ties a player to a Writer interface
-type PlayerReference struct {
-	Name   string
-	Player *Player
-	Writer Writer
-}
-
-// Write data
-func (pr *PlayerReference) Write(msg interface{}) {
-	pr.Writer.Write(msg)
-}
-
 // Player holds the player data
 type Player struct {
+	name   string
+	writer Writer
+
 	deck       []*Card
 	hand       []*Card
 	graveyard  []*Card
@@ -55,10 +46,10 @@ type Player struct {
 	ready bool
 
 	turn   bool
-	turnNo int
+	turnNo uint8
 
-	action chan []string
-	cancel chan bool
+	Action chan []string
+	Cancel chan bool
 
 	match *Match
 
@@ -67,8 +58,10 @@ type Player struct {
 }
 
 // newPlayer returns a new player
-func newPlayer(match *Match, turn bool) *Player {
+func newPlayer(name string, writer Writer, match *Match, turn bool) *Player {
 	return &Player{
+		name:       name,
+		writer:     writer,
 		deck:       make([]*Card, 0),
 		hand:       make([]*Card, 0),
 		graveyard:  make([]*Card, 0),
@@ -82,15 +75,14 @@ func newPlayer(match *Match, turn bool) *Player {
 	}
 }
 
-// Name returns the username of the player
+// Name ...
 func (p *Player) Name() string {
-	pr, err := p.match.playerRef(p)
-	if err != nil {
-		logrus.Debugf("Couldn't get player's name: %s", err)
-		return "unknown"
-	}
+	return p.name
+}
 
-	return pr.Name
+// Write data
+func (p *Player) Write(msg interface{}) {
+	p.writer.Write(msg)
 }
 
 // IsPlayerTurn is it the Player's turnNo
@@ -99,7 +91,7 @@ func (p *Player) IsPlayerTurn() bool {
 }
 
 // Turn returns turn no.
-func (p *Player) Turn() int {
+func (p *Player) Turn() uint8 {
 	return p.turnNo
 }
 
@@ -151,15 +143,9 @@ func (p *Player) Container(c Container) ([]*Card, error) {
 	}
 }
 
-// MapContainer performs the given action on all cards in the specified container
-func (p *Player) MapContainer(containerName Container, fn func(*Card)) {
-	cards, err := p.Container(containerName)
-	if err != nil {
-		logrus.Debugf("MapContainer: %s", err)
-		return
-	}
-
-	for _, card := range cards {
+// MapContainers performs the given Action on all cards in the specified containers
+func (p *Player) MapContainers(fn func(*Card), containers ...Container) {
+	for _, card := range p.CollectCards(containers...) {
 		fn(card)
 	}
 }
@@ -242,40 +228,33 @@ func (p *Player) DrawCards(n int) {
 	}
 }
 
-// HasCard checks if a container has a card
-func (p *Player) HasCard(container Container, id string) bool {
-	c, err := p.Container(container)
-	if err != nil {
-		logrus.Debugf("HasCard: %s", err)
-		return false
-	}
-
-	for _, card := range c {
-		if card.id == id {
+// HasCard checks if the given containers have the card
+func (p *Player) HasCard(id string, containers ...Container) bool {
+	for _, c := range p.CollectCards(containers...) {
+		if c.id == id {
 			return true
 		}
 	}
-
 	return false
 }
 
-// GetCard returns a pointer to a Card by its ID and container
-func (p *Player) GetCard(id string) (*Card, error) {
-	for _, card := range p.match.CollectCards() {
-		if card.id == id {
-			return card, nil
+// CollectCards collects cards from the specified containers
+func (p *Player) CollectCards(containers ...Container) []*Card {
+	cards := make([]*Card, 0)
+
+	for _, container := range containers {
+		c, err := p.Container(container)
+		if err != nil {
+			logrus.Debug(err)
 		}
+		cards = append(cards, c...)
 	}
 
-	return nil, errors.New("Card was not found")
+	return cards
 }
 
 // Damage reduces life of player
-func (p *Player) Damage(source *Card, ctx *Context, health int) {
-	if health <= 0 {
-		return
-	}
-
+func (p *Player) Damage(source *Card, ctx *Context, health uint8) {
 	ctx = NewContext(ctx.match,
 		&DamageEvent{
 			Player: p,
@@ -286,7 +265,7 @@ func (p *Player) Damage(source *Card, ctx *Context, health int) {
 
 	ctx.ScheduleAfter(func() {
 		if event, ok := ctx.event.(*DamageEvent); ok {
-			p.life -= event.Health
+			p.life -= int(event.Health)
 			ctx.match.Chat("Server", fmt.Sprintf("%s did %d damage to %s", source.name, health, p.Name()))
 		}
 	})
@@ -299,11 +278,7 @@ func (p *Player) Damage(source *Card, ctx *Context, health int) {
 }
 
 // Heal reduces life of player
-func (p *Player) Heal(source *Card, ctx *Context, health int) {
-	if health <= 0 {
-		return
-	}
-
+func (p *Player) Heal(source *Card, ctx *Context, health uint8) {
 	ctx = NewContext(ctx.match,
 		&HealEvent{
 			Player: p,
@@ -313,12 +288,54 @@ func (p *Player) Heal(source *Card, ctx *Context, health int) {
 
 	ctx.ScheduleAfter(func() {
 		if event, ok := ctx.event.(*HealEvent); ok {
-			p.life += event.Health
+			p.life += int(event.Health)
 			ctx.match.Chat("Server", fmt.Sprintf("%s healed %d life for %s", source.name, health, p.Name()))
 		}
 	})
 
 	ctx.match.HandleFx(ctx)
+}
+
+// Search prompts the user to select n cards from a slice of cards
+func (p *Player) Search(cards []*Card, text string, min int, max int, cancellable bool) []*Card {
+	p.Action = make(chan []string)
+	p.Cancel = make(chan bool)
+
+	defer close(p.Cancel)
+	defer close(p.Action)
+
+	p.waiting(false)
+
+	result := make([]*Card, 0)
+
+	p.match.NewAction(p, cards, min, max, text, cancellable)
+	defer p.match.CloseAction(p)
+
+	for {
+		select {
+		case Action := <-p.Action:
+			{
+				if len(Action) < min || len(Action) > max || !AssertCardsIn(cards, Action...) {
+					p.match.WarnPlayer(p, "The cards you selected does not meet the requirements")
+					continue
+				}
+				for _, id := range Action {
+					c, err := GetCard(id, cards)
+					if err != nil {
+						logrus.Debugf("Search: %s", err)
+						return result
+					}
+
+					result = append(result, c)
+				}
+				return result
+			}
+		case Cancel := <-p.Cancel:
+			if cancellable && Cancel {
+				return result
+			}
+		}
+	}
 }
 
 // denormalized returns a server.PlayerState
@@ -331,100 +348,4 @@ func (p *Player) denormalized() PlayerState {
 		Battlezone: denormalizeCards(p.battlezone),
 		Trapzone:   denormalizeCards(p.trapzone),
 	}
-}
-
-// hideCards takes an array of *Card and returns an array of empty CardStates
-func hideCards(n int) []CardState {
-	arr := make([]CardState, 0)
-
-	for i := 0; i < n; i++ {
-		arr = append(arr, CardState{})
-	}
-
-	return arr
-}
-
-// Action prompts the user to select n cards from a slice of cards and perform some functions on them
-func (p *Player) Action(
-	cards []*Card,
-	min int,
-	max int,
-	cancellable bool,
-	actionFx func([]string),
-	closeFx func()) {
-
-	p.action = make(chan []string)
-	p.cancel = make(chan bool)
-	p.waiting(false)
-
-	defer func() {
-		p.waiting(true)
-		close(p.action)
-		close(p.cancel)
-	}()
-
-	for {
-		select {
-		case action := <-p.action:
-			{
-				if len(action) < min || len(action) > max || !AssertCardsIn(cards, action...) {
-					p.match.WarnPlayer(p, "The cards you selected does not meet the requirements")
-					continue
-				}
-
-				actionFx(action)
-			}
-
-		case cancel := <-p.cancel:
-			if cancellable && cancel {
-				closeFx()
-				return
-			}
-		}
-	}
-}
-
-// Search prompts the user to select n cards from a slice of cards
-func (p *Player) Search(cards []*Card, min int, max int, cancellable bool) []*Card {
-	result := make([]*Card, 0)
-
-	p.Action(
-		cards,
-		min,
-		max,
-		cancellable,
-		func(action []string) {
-			for _, id := range action {
-				c, err := p.GetCard(id)
-				if err != nil {
-					logrus.Debugf("Search: %s", err)
-					return
-				}
-
-				result = append(result, c)
-			}
-			return
-		},
-		func() {})
-
-	return result
-}
-
-// SearchAction is an action that prompts the user to select n cards from a slice of cards
-func (p *Player) SearchAction(cards []*Card, text string, min int, max int, cancellable bool) []*Card {
-	p.match.NewAction(p, cards, min, max, text, cancellable)
-	defer p.match.CloseAction(p)
-
-	return p.Search(cards, min, max, cancellable)
-}
-
-// GetCreatures ...
-func (p *Player) GetCreatures() []*Card {
-	creatures := make([]*Card, 0)
-
-	if cards, err := p.Container(BATTLEZONE); err == nil {
-		creatures = append(creatures, cards...)
-	}
-
-	return creatures
 }

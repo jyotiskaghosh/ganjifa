@@ -17,15 +17,15 @@ func Ayudhabhrt() *match.Card {
 		Rank:    0,
 		Civ:     civ.AGNI,
 		Family:  family.Human,
-		Attack:  200,
-		Defence: 100,
-		Handlers: []match.HandlerFunc{
+		Attack:  2,
+		Defence: 1,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 				for _, c := range card.Attachments() {
 					if c.Family() == family.Equipment {
-						fx.AttackModifier(card, ctx, 100)
-						fx.DefenceModifier(card, ctx, 100)
+						fx.AttackModifier(card, ctx, 1)
+						fx.DefenceModifier(card, ctx, 1)
 					}
 				}
 			},
@@ -42,9 +42,9 @@ func Sainika() *match.Card {
 		Rank:    0,
 		Civ:     civ.AGNI,
 		Family:  family.Human,
-		Attack:  200,
-		Defence: 200,
-		Handlers: []match.HandlerFunc{
+		Attack:  2,
+		Defence: 2,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 		},
 	}
@@ -59,9 +59,9 @@ func Sastravikrayin() *match.Card {
 		Rank:    1,
 		Civ:     civ.AGNI,
 		Family:  family.Human,
-		Attack:  200,
-		Defence: 200,
-		Handlers: []match.HandlerFunc{
+		Attack:  2,
+		Defence: 2,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 				if card.AmIPlayed(ctx) {
@@ -73,7 +73,7 @@ func Sastravikrayin() *match.Card {
 							return
 						}
 
-						cards = card.Player().SearchAction(
+						cards = card.Player().Search(
 							match.Filter(cards, func(x *match.Card) bool { return x.Family() == family.Equipment }),
 							fmt.Sprintf("Select 1 %s", family.Equipment),
 							1,
@@ -105,13 +105,13 @@ func Astrakara() *match.Card {
 		Rank:    1,
 		Civ:     civ.AGNI,
 		Family:  family.Human,
-		Attack:  200,
-		Defence: 200,
-		Handlers: []match.HandlerFunc{
+		Attack:  2,
+		Defence: 2,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 				if event, ok := ctx.Event().(*match.GetRankEvent); ok && card.Zone() == match.BATTLEZONE {
-					card, err := card.Player().GetCard(event.ID)
+					card, err := match.GetCard(event.ID, card.Player().CollectCards(match.HAND))
 					if err != nil {
 						logrus.Debug(err)
 						return

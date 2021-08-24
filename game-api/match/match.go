@@ -11,8 +11,8 @@ import (
 
 // Match struct
 type Match struct {
-	player1 *PlayerReference
-	player2 *PlayerReference
+	player1 *Player
+	player2 *Player
 
 	mutex *sync.Mutex
 
@@ -30,26 +30,13 @@ func New() *Match {
 	}
 }
 
-// playerRef returns the player ref for a given player
-func (m *Match) playerRef(p *Player) (*PlayerReference, error) {
-	if m.player1.Player == p {
+// PlayerForWriter returns the player for a given writer or an error if the writer is not in  p1 or p2
+func (m *Match) PlayerForWriter(w Writer) (*Player, error) {
+	if m.player1.writer == w {
 		return m.player1, nil
 	}
 
-	if m.player2.Player == p {
-		return m.player2, nil
-	}
-
-	return nil, errors.New("player is not a player of this match")
-}
-
-// PlayerForWriter returns the player ref for a given output or an error if the output is not p1 or p2
-func (m *Match) PlayerForWriter(w Writer) (*PlayerReference, error) {
-	if m.player1.Writer == w {
-		return m.player1, nil
-	}
-
-	if m.player2.Writer == w {
+	if m.player2.writer == w {
 		return m.player2, nil
 	}
 
@@ -66,61 +53,56 @@ func (m *Match) Quit() <-chan bool {
 	return m.quit
 }
 
-// Winner returns true or false based on if the playerref is the winner
-func (m *Match) Winner(pr *PlayerReference) bool {
-	return pr.Player == m.winner
+// Winner returns true or false based on if the Player is the winner
+func (m *Match) Winner(p *Player) bool {
+	return p == m.winner
 }
 
 // AddPlayer adds a new player
-func (m *Match) AddPlayer(w Writer) (*PlayerReference, error) {
+func (m *Match) AddPlayer(name string, writer Writer) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
-	var pr *PlayerReference
-
 	switch {
 	case m.player1 == nil:
-		{
-			m.player1 = &PlayerReference{
-				Name:   "player1",
-				Player: newPlayer(m, true),
-				Writer: w,
-			}
-		}
+		m.player1 = newPlayer(name, writer, m, true)
 	case m.player2 == nil:
-		{
-			m.player2 = &PlayerReference{
-				Name:   "player2",
-				Player: newPlayer(m, false),
-				Writer: w,
-			}
-		}
+		m.player2 = newPlayer(name, writer, m, false)
 	default:
-		return nil, errors.New("players at max capacity")
+		return errors.New("players at max capacity")
 	}
 
-	return pr, nil
+	return nil
 }
 
 // Parse processes the data provided by player
-func (m *Match) Parse(pr *PlayerReference, data []byte) {
+func (m *Match) Parse(w Writer, data []byte) {
 	defer func() {
 		if r := recover(); r != nil {
 			logrus.Warnf("Recovered from parsing message in match. %v", r)
 		}
 	}()
 
-	if pr.Player.wait {
-		Warn(pr, "waiting for an action to resolve")
+	p, err := m.PlayerForWriter(w)
+	if err != nil {
+		logrus.Debug(err)
 		return
 	}
 
-	m.player1.Player.waiting(true)
-	m.player2.Player.waiting(true)
-	defer func() {
-		m.player1.Player.waiting(false)
-		m.player2.Player.waiting(false)
-	}()
+	if p.wait {
+		Warn(p, "Waiting for an action to resolve")
+		return
+	}
+
+	if m.player1 != nil {
+		m.player1.waiting(true)
+		defer m.player1.waiting(false)
+	}
+
+	if m.player2 != nil {
+		m.player2.waiting(true)
+		defer m.player2.waiting(false)
+	}
 
 	var msg Message
 	if err := json.Unmarshal(data, &msg); err != nil {
@@ -130,8 +112,8 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 	switch msg.Header {
 	case "choose_deck":
 		{
-			if m.started {
-				Warn(pr, "match started cannot choose deck again")
+			if m.Started() {
+				Warn(p, "match started cannot choose deck again")
 				return
 			}
 
@@ -140,38 +122,35 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				return
 			}
 
-			if err := pr.Player.createDeck(msg.Cards); err != nil {
-				Warn(pr, err.Error())
+			if err := p.createDeck(msg.Cards); err != nil {
+				Warn(p, err.Error())
 				return
 			}
 
-			m.Chat("Server", fmt.Sprintf("%s has chosen their deck", pr.Name))
-
-			if m.player1 != nil && m.player2 != nil && m.player1.Player.ready && m.player2.Player.ready {
-				m.start()
-			}
+			m.Start()
 		}
 	case "end_turn":
 		{
-			if pr.Player.turn {
+			if m.started && p.turn {
 				m.EndTurn()
 			}
 		}
 	case "set_card":
 		{
-			if !pr.Player.turn {
+			if !m.started || !p.turn {
 				return
 			}
 
 			var msg struct {
 				ID string `json:"id"`
 			}
+
 			if err := json.Unmarshal(data, &msg); err != nil {
 				logrus.Debug(err)
 				return
 			}
 
-			c, err := pr.Player.GetCard(msg.ID)
+			c, err := GetCard(msg.ID, p.CollectCards(HAND))
 			if err != nil {
 				logrus.Debug(err)
 				return
@@ -184,18 +163,21 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 		}
 	case "play_card":
 		{
-			if !pr.Player.turn {
+			if !m.started || !p.turn {
 				return
 			}
 
-			msg := PlayCardEvent{}
+			var msg struct {
+				ID string `json:"id"`
+			}
+
 			if err := json.Unmarshal(data, &msg); err != nil {
 				logrus.Debug(err)
 				return
 			}
 
-			if ok := pr.Player.HasCard(HAND, msg.ID); ok {
-				m.PlayCard(msg.ID, msg.TargetID)
+			if ok := p.HasCard(msg.ID, HAND); ok {
+				m.PlayCard(msg.ID)
 			}
 		}
 	case "action":
@@ -204,7 +186,7 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				Cards []string `json:"cards"`
 			}
 			if err := json.Unmarshal(data, &msg); err != nil {
-				Warn(pr, "Invalid selection")
+				Warn(p, "Invalid selection")
 				return
 			}
 
@@ -218,34 +200,59 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 				cards = append(cards, card)
 			}
 
-			if pr.Player.action != nil {
-				pr.Player.action <- cards
+			if p.Action != nil {
+				p.Action <- cards
 			}
 		}
 	case "cancel":
 		{
-			if pr.Player.cancel != nil {
-				pr.Player.cancel <- true
+			if p.Cancel != nil {
+				p.Cancel <- true
 			}
 		}
-	case "attack":
+	case "attack_player":
 		{
-			if !pr.Player.turn {
+			if !m.started || !p.turn {
 				return
 			}
 
-			if pr.Player.turnNo == 1 && pr == m.player1 {
-				Warn(pr, "player 1 can't attack on first turn")
+			var msg struct {
+				ID string `json:"id"`
+			}
+
+			if p.turnNo == 1 && p == m.player1 {
+				Warn(p, "player 1 can't attack on first turn")
 				return
 			}
 
-			msg := AttackEvent{}
 			if err := json.Unmarshal(data, &msg); err != nil {
 				logrus.Debug(err)
 				return
 			}
 
-			m.Attack(pr, msg.ID, msg.TargetID)
+			m.AttackPlayer(p, msg.ID)
+		}
+	case "attack_creature":
+		{
+			if !m.started || !p.turn {
+				return
+			}
+
+			var msg struct {
+				ID string `json:"id"`
+			}
+
+			if p.turnNo == 1 && p == m.player1 {
+				Warn(p, "player 1 can't attack on first turn")
+				return
+			}
+
+			if err := json.Unmarshal(data, &msg); err != nil {
+				logrus.Debug(err)
+				return
+			}
+
+			m.AttackCreature(p, msg.ID)
 		}
 	default:
 		logrus.Debugf("Received message in incorrect format: %v", string(data))
@@ -254,15 +261,15 @@ func (m *Match) Parse(pr *PlayerReference, data []byte) {
 
 // Opponent returns the opponent of the given player
 func (m *Match) Opponent(p *Player) *Player {
-	if m.player1.Player == p {
-		return m.player2.Player
+	if m.player1 == p {
+		return m.player2
 	}
-	return m.player1.Player
+	return m.player1
 }
 
 // CurrentPlayer returns the turn player
-func (m *Match) CurrentPlayer() *PlayerReference {
-	if m.player1.Player.turn {
+func (m *Match) CurrentPlayer() *Player {
+	if m.player1.turn {
 		return m.player1
 	}
 	return m.player2
@@ -298,17 +305,11 @@ func (m *Match) MessagePlayer(p *Player, message string) {
 
 // WritePlayer sends a message to a player
 func (m *Match) WritePlayer(p *Player, msg interface{}) {
-	pr, err := m.playerRef(p)
-	if err != nil {
-		logrus.Debug(fmt.Sprintf("error while writing to player: %s", err))
-		return
-	}
-
-	pr.Write(msg)
+	p.Write(msg)
 }
 
 // Warn sends a warning to the specified player ref
-func Warn(p *PlayerReference, message string) {
+func Warn(p *Player, message string) {
 	p.Write(ChatMessage{
 		Header:  "warn",
 		Message: message,
@@ -344,37 +345,31 @@ func (m *Match) Destroy(card *Card, source *Card) {
 	m.HandleFx(ctx)
 }
 
-// CollectCards ...
-func (m *Match) CollectCards() []*Card {
-	players := make([]*PlayerReference, 0)
-
-	// The player in which turn it is is to be handled first
-	if m.player1.Player.turn {
-		players = append(players, m.player1, m.player2)
-	} else {
-		players = append(players, m.player2, m.player1)
-	}
-
-	cards := make([]*Card, 0)
-
-	for _, p := range players {
-		cards = append(cards, p.Player.battlezone...)
-		cards = append(cards, p.Player.soul...)
-		cards = append(cards, p.Player.trapzone...)
-		cards = append(cards, p.Player.hand...)
-		cards = append(cards, p.Player.graveyard...)
-		cards = append(cards, p.Player.deck...)
-	}
-
-	return cards
-}
-
 // HandleFx ...
 func (m *Match) HandleFx(ctx *Context) {
 	defer m.BroadcastState()
 
-	for _, c := range m.CollectCards() {
-		for _, h := range c.GetHandlers(ctx) {
+	cards := make([]*Card, 0)
+
+	// The player in which turn it is is to be handled first
+	if m.player1.turn {
+		cards = append(
+			m.player1.CollectCards(AllContainers()...),
+			m.player2.CollectCards(AllContainers()...)...,
+		)
+	} else {
+		cards = append(
+			m.player2.CollectCards(AllContainers()...),
+			m.player1.CollectCards(AllContainers()...)...,
+		)
+	}
+
+	for _, c := range cards {
+		for _, h := range append(c.effects, c.conditions...) {
+			if ctx.cancel {
+				break
+			}
+
 			h(c, ctx)
 		}
 	}
@@ -397,13 +392,13 @@ func (m *Match) BroadcastState() {
 		}
 	}()
 
-	player1 := m.player1.Player.denormalized()
-	player2 := m.player2.Player.denormalized()
+	player1 := m.player1.denormalized()
+	player2 := m.player2.denormalized()
 
 	p1state := StateMessage{
 		Header: "state_update",
 		State: State{
-			MyTurn:   m.player1.Player.turn,
+			MyTurn:   m.player1.turn,
 			Me:       player1,
 			Opponent: player2,
 		},
@@ -412,17 +407,17 @@ func (m *Match) BroadcastState() {
 	p2state := StateMessage{
 		Header: "state_update",
 		State: State{
-			MyTurn:   m.player2.Player.turn,
+			MyTurn:   m.player2.turn,
 			Me:       player2,
 			Opponent: player1,
 		},
 	}
 
-	p1state.State.Opponent.Hand = hideCards(len(p1state.State.Opponent.Hand))
-	p1state.State.Opponent.Trapzone = hideCards(len(p1state.State.Opponent.Trapzone))
+	p1state.State.Opponent.Hand = hideCards(&p1state.State.Opponent.Hand)
+	p1state.State.Opponent.Trapzone = hideCards(&p1state.State.Opponent.Trapzone)
 
-	p2state.State.Opponent.Hand = hideCards(len(p2state.State.Opponent.Hand))
-	p2state.State.Opponent.Trapzone = hideCards(len(p2state.State.Opponent.Trapzone))
+	p2state.State.Opponent.Hand = hideCards(&p2state.State.Opponent.Hand)
+	p2state.State.Opponent.Trapzone = hideCards(&p2state.State.Opponent.Trapzone)
 
 	m.player1.Write(p1state)
 	m.player2.Write(p2state)
@@ -477,22 +472,28 @@ func (m *Match) Highlight(ids ...string) {
 
 // changeCurrentPlayer changes the current player
 func (m *Match) changeCurrentPlayer() {
-	m.player1.Player.turn = !m.player1.Player.turn
-	m.player2.Player.turn = !m.player2.Player.turn
+	m.player1.turn = !m.player1.turn
+	m.player2.turn = !m.player2.turn
 }
 
-// start starts the match
-func (m *Match) start() {
+// Start starts the match
+func (m *Match) Start() {
+	if m.started ||
+		m.player1 == nil || m.player2 == nil ||
+		!m.player1.ready || !m.player2.ready {
+		return
+	}
+
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 
 	m.started = true
 
-	m.player1.Player.ShuffleDeck()
-	m.player2.Player.ShuffleDeck()
+	m.player1.ShuffleDeck()
+	m.player2.ShuffleDeck()
 
-	m.player1.Player.DrawCards(5)
-	m.player2.Player.DrawCards(5)
+	m.player1.DrawCards(5)
+	m.player2.DrawCards(5)
 
 	m.Chat("Server", "The match has begun!")
 
@@ -505,7 +506,7 @@ func (m *Match) start() {
 // beginNewTurn starts a new turn
 func (m *Match) beginNewTurn() {
 	m.changeCurrentPlayer()
-	m.CurrentPlayer().Player.turnNo++
+	m.CurrentPlayer().turnNo++
 
 	m.HandleFx(NewContext(m, &BeginTurnStep{}))
 
@@ -515,29 +516,24 @@ func (m *Match) beginNewTurn() {
 // untapStep ...
 func (m *Match) untapStep() {
 	m.HandleFx(NewContext(m, &UntapStep{}))
-
 	m.startOfTurnStep()
 }
 
 // startOfTurnStep ...
 func (m *Match) startOfTurnStep() {
 	m.HandleFx(NewContext(m, &StartOfTurnStep{}))
-
 	m.drawStep()
 }
 
 // drawStep ...
 func (m *Match) drawStep() {
 	m.HandleFx(NewContext(m, &DrawStep{}))
-
-	p := m.CurrentPlayer().Player
-	p.DrawCards(1)
+	m.CurrentPlayer().DrawCards(1)
 }
 
 // endStep ...
 func (m *Match) endStep() {
 	m.HandleFx(NewContext(m, &EndStep{}))
-
 	m.beginNewTurn()
 }
 
@@ -553,31 +549,53 @@ func (m *Match) EndTurn() {
 }
 
 // PlayCard is called when the player attempts to play a card
-func (m *Match) PlayCard(id string, targetID string) {
-	m.Highlight(targetID)
-	defer m.Highlight()
-
+func (m *Match) PlayCard(id string) {
 	ctx := NewContext(m, &PlayCardEvent{
-		ID:       id,
-		TargetID: targetID,
+		ID: id,
 	})
 	m.HandleFx(ctx)
 }
 
-// Attack is called when the player attempts to attack an opponent's creature
-func (m *Match) Attack(pr *PlayerReference, id string, targetID string) {
-	m.Highlight(id, targetID)
+// Equip Fires a Equip event
+func (m *Match) Equip(id string, target *Card) {
+	m.HandleFx(NewContext(m, &Equip{
+		ID:     id,
+		Target: target,
+	}))
+}
+
+// SpellCast Fires a SpellCast event
+func (m *Match) SpellCast(id string, targets []*Card) {
+	ids := []string{}
+
+	for _, c := range targets {
+		ids = append(ids, c.id)
+	}
+
+	m.Highlight(ids...)
 	defer m.Highlight()
 
-	ctx := NewContext(m, &AttackEvent{
-		ID:       id,
-		TargetID: targetID,
+	m.HandleFx(NewContext(m, &SpellCast{
+		ID:      id,
+		Targets: targets,
+	}))
+}
+
+// AttackPlayer is called when the player attempts to attack the opposing player
+func (m *Match) AttackPlayer(p *Player, id string) {
+	m.Highlight(id)
+	defer m.Highlight()
+
+	m.Opponent(p).waiting(false)
+
+	ctx := NewContext(m, &AttackPlayer{
+		ID: id,
 	})
 	m.HandleFx(ctx)
 
 	// Tap card after attack
 	// card gets tapped even if attack fails, this is done to prevent reusing before attacking effects
-	card, err := m.GetCard(id)
+	card, err := GetCard(id, p.CollectCards(BATTLEZONE))
 	if err != nil {
 		logrus.Debug(err)
 	} else {
@@ -587,12 +605,37 @@ func (m *Match) Attack(pr *PlayerReference, id string, targetID string) {
 	m.BroadcastState()
 }
 
-// GetCard returns the *Card from a container from either players
-func (m *Match) GetCard(id string) (*Card, error) {
-	c, err := m.player1.Player.GetCard(id)
-	if err != nil {
-		return m.player2.Player.GetCard(id)
+// AttackCreature is called when the player attempts to attack an opponent's creature
+func (m *Match) AttackCreature(p *Player, id string) {
+	targets := p.Search(
+		Filter(m.Opponent(p).CollectCards(BATTLEZONE), func(c *Card) bool { return c.Tapped }),
+		"Select creature to attack",
+		1,
+		1,
+		true,
+	)
+
+	if len(targets) > 0 {
+		m.Highlight(id, targets[0].id)
+		defer m.Highlight()
 	}
 
-	return c, nil
+	m.Opponent(p).waiting(false)
+
+	ctx := NewContext(m, &AttackCreature{
+		ID:       id,
+		TargetID: targets[0].id,
+	})
+	m.HandleFx(ctx)
+
+	// Tap card after attack
+	// card gets tapped even if attack fails, this is done to prevent reusing before attacking effects
+	card, err := GetCard(id, p.CollectCards(BATTLEZONE))
+	if err != nil {
+		logrus.Debug(err)
+	} else {
+		card.Tapped = true
+	}
+
+	m.BroadcastState()
 }

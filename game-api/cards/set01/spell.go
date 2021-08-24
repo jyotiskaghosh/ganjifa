@@ -18,24 +18,37 @@ func EnergySurge() *match.Card {
 		Rank:   0,
 		Civ:    civ.AGNI,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
 			func(card *match.Card, ctx *match.Context) {
-				if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-					target, err := card.Player().GetCard(event.TargetID)
-					if err != nil {
-						ctx.InterruptFlow()
-						logrus.Debug(err)
-						return
+				switch event := ctx.Event().(type) {
+				case *match.PlayCardEvent:
+					if event.ID == card.ID() {
+						card.SpellCast(
+							ctx,
+							func() []*match.Card {
+								return card.Player().Search(
+									card.Player().CollectCards(match.BATTLEZONE),
+									"Select 1 of your creatures",
+									1,
+									1,
+									true)
+							},
+						)
 					}
-
-					ctx.ScheduleAfter(func() {
-						target.AddCondition(func(card *match.Card, ctx *match.Context) {
-							fx.AttackModifier(card, ctx, 400)
+				case *match.SpellCast:
+					if event.ID == card.ID() {
+						ctx.ScheduleAfter(func() {
+							for _, c := range event.Targets {
+								c.AddCondition(func(card *match.Card, ctx *match.Context) {
+									fx.AttackModifier(card, ctx, 4)
+								})
+							}
 						})
-					})
+					}
+				default:
+					fx.Spell(card, ctx)
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -49,28 +62,39 @@ func Fireball() *match.Card {
 		Rank:   0,
 		Civ:    civ.AGNI,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
-					ctx.ScheduleAfter(func() {
-						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							target, err := ctx.Match().Opponent(card.Player()).GetCard(event.TargetID)
-							if err != nil {
-								ctx.InterruptFlow()
-								logrus.Debug(err)
-								return
+				switch event := ctx.Event().(type) {
+				case *match.PlayCardEvent:
+					if event.ID == card.ID() {
+						card.SpellCast(
+							ctx,
+							func() []*match.Card {
+								return card.Player().Search(
+									ctx.Match().Opponent(card.Player()).CollectCards(match.BATTLEZONE),
+									"Select 1 of your opponents creatures",
+									1,
+									1,
+									true)
+							},
+						)
+					}
+				case *match.SpellCast:
+					if event.ID == card.ID() {
+						ctx.ScheduleAfter(func() {
+							for _, c := range event.Targets {
+								if c.GetDefence(ctx) <= 2 {
+									ctx.Match().Destroy(c, card)
+								} else {
+									ctx.InterruptFlow()
+								}
 							}
-
-							if target.GetDefence(ctx) <= 200 {
-								ctx.Match().Destroy(target, card)
-							} else {
-								ctx.InterruptFlow()
-							}
-						}
-					})
+						})
+					}
+				default:
+					fx.Spell(card, ctx)
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -84,19 +108,21 @@ func RainOfArrows() *match.Card {
 		Rank:   0,
 		Civ:    civ.AGNI,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
+			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
+				if event, ok := ctx.Event().(*match.SpellCast); ok && event.ID == card.ID() {
 					ctx.ScheduleAfter(func() {
-						for _, c := range append(card.Player().GetCreatures(), ctx.Match().Opponent(card.Player()).GetCreatures()...) {
-							if c.GetDefence(ctx) <= 100 {
+						for _, c := range append(
+							card.Player().CollectCards(match.BATTLEZONE),
+							ctx.Match().Opponent(card.Player()).CollectCards(match.BATTLEZONE)...) {
+							if c.GetDefence(ctx) <= 1 {
 								ctx.Match().Destroy(c, card)
 							}
 						}
 					})
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -110,28 +136,39 @@ func MagmaGeyser() *match.Card {
 		Rank:   1,
 		Civ:    civ.AGNI,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
-					ctx.ScheduleAfter(func() {
-						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							target, err := ctx.Match().Opponent(card.Player()).GetCard(event.TargetID)
-							if err != nil {
-								ctx.InterruptFlow()
-								logrus.Debug(err)
-								return
+				switch event := ctx.Event().(type) {
+				case *match.PlayCardEvent:
+					if event.ID == card.ID() {
+						card.SpellCast(
+							ctx,
+							func() []*match.Card {
+								return card.Player().Search(
+									ctx.Match().Opponent(card.Player()).CollectCards(match.BATTLEZONE),
+									"Select 1 of your opponents creatures",
+									1,
+									1,
+									true)
+							},
+						)
+					}
+				case *match.SpellCast:
+					if event.ID == card.ID() {
+						ctx.ScheduleAfter(func() {
+							for _, c := range event.Targets {
+								if c.GetDefence(ctx) <= 4 {
+									ctx.Match().Destroy(c, card)
+								} else {
+									ctx.InterruptFlow()
+								}
 							}
-
-							if target.GetDefence(ctx) <= 400 {
-								ctx.Match().Destroy(target, card)
-							} else {
-								ctx.InterruptFlow()
-							}
-						}
-					})
+						})
+					}
+				default:
+					fx.Spell(card, ctx)
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -145,24 +182,38 @@ func Degenerate() *match.Card {
 		Rank:   0,
 		Civ:    civ.PRITHVI,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
-					ctx.ScheduleAfter(func() {
-						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							target, err := ctx.Match().Opponent(card.Player()).GetCard(event.TargetID)
-							if err != nil {
-								ctx.InterruptFlow()
-								logrus.Debug(err)
-								return
+				switch event := ctx.Event().(type) {
+				case *match.PlayCardEvent:
+					if event.ID == card.ID() {
+						card.SpellCast(
+							ctx,
+							func() []*match.Card {
+								return card.Player().Search(
+									append(
+										card.Player().CollectCards(match.BATTLEZONE),
+										ctx.Match().Opponent(card.Player()).CollectCards(match.BATTLEZONE)...,
+									),
+									"Select a creature",
+									1,
+									1,
+									true)
+							},
+						)
+					}
+				case *match.SpellCast:
+					if event.ID == card.ID() {
+						ctx.ScheduleAfter(func() {
+							for _, c := range event.Targets {
+								match.Devolve(c, card)
 							}
-
-							match.Devolve(target, card)
-						}
-					})
+						})
+					}
+				default:
+					fx.Spell(card, ctx)
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -176,27 +227,38 @@ func LeechLife() *match.Card {
 		Rank:   0,
 		Civ:    civ.PRITHVI,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
-					ctx.ScheduleAfter(func() {
-						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							target, err := card.Player().GetCard(event.TargetID)
-							if err != nil {
-								ctx.InterruptFlow()
-								logrus.Debug(err)
-								return
+				switch event := ctx.Event().(type) {
+				case *match.PlayCardEvent:
+					if event.ID == card.ID() {
+						card.SpellCast(
+							ctx,
+							func() []*match.Card {
+								return card.Player().Search(
+									card.Player().CollectCards(match.BATTLEZONE),
+									"Select 1 of your creatures",
+									1,
+									1,
+									true)
+							},
+						)
+					}
+				case *match.SpellCast:
+					if event.ID == card.ID() {
+						ctx.ScheduleAfter(func() {
+							for _, c := range event.Targets {
+								c.AddCondition(func(card *match.Card, ctx *match.Context) {
+									fx.AttackModifier(card, ctx, 2)
+								})
+								c.AddCondition(fx.Leech)
 							}
-
-							target.AddCondition(func(card *match.Card, ctx *match.Context) {
-								fx.AttackModifier(card, ctx, 200)
-							})
-							target.AddCondition(fx.Leech)
-						}
-					})
+						})
+					}
+				default:
+					fx.Spell(card, ctx)
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -210,25 +272,39 @@ func RapidEvolution() *match.Card {
 		Rank:   0,
 		Civ:    civ.PRITHVI,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
-					ctx.ScheduleAfter(func() {
-						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							target, err := card.Player().GetCard(event.TargetID)
-							if err != nil {
-								ctx.InterruptFlow()
-								logrus.Debug(err)
-								return
+				switch event := ctx.Event().(type) {
+				case *match.PlayCardEvent:
+					if event.ID == card.ID() {
+						card.SpellCast(
+							ctx,
+							func() []*match.Card {
+								return card.Player().Search(
+									append(
+										card.Player().CollectCards(match.BATTLEZONE),
+										ctx.Match().Opponent(card.Player()).CollectCards(match.BATTLEZONE)...,
+									),
+									"Select a creature",
+									1,
+									1,
+									true)
+							},
+						)
+					}
+				case *match.SpellCast:
+					if event.ID == card.ID() {
+						ctx.ScheduleAfter(func() {
+							for _, c := range event.Targets {
+								c.Tapped = true
+								c.RemoveCondition(fx.CantEvolve)
 							}
-
-							target.Tapped = true
-							target.RemoveCondition(fx.CantEvolve)
-						}
-					})
+						})
+					}
+				default:
+					fx.Spell(card, ctx)
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -242,23 +318,18 @@ func AirMail() *match.Card {
 		Rank:   0,
 		Civ:    civ.VAYU,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
+			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
+				if event, ok := ctx.Event().(*match.SpellCast); ok && event.ID == card.ID() {
 					ctx.ScheduleAfter(func() {
-						cards, err := card.Player().Container(match.DECK)
-						if err != nil {
-							ctx.InterruptFlow()
-							logrus.Debug(err)
-							return
-						}
-
-						cards = card.Player().SearchAction(
-							cards,
+						cards := card.Player().Search(
+							card.Player().CollectCards(match.DECK),
 							"Select a card",
 							1,
 							1,
-							false)
+							true,
+						)
 
 						for _, c := range cards {
 							if err := c.MoveCard(match.HAND); err != nil {
@@ -272,7 +343,6 @@ func AirMail() *match.Card {
 					})
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -286,34 +356,38 @@ func Whirlwind() *match.Card {
 		Rank:   0,
 		Civ:    civ.VAYU,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
-					ctx.ScheduleAfter(func() {
-						cards, err := ctx.Match().Opponent(card.Player()).Container(match.TRAPZONE)
-						if err != nil {
-							ctx.InterruptFlow()
-							logrus.Debug(err)
-							return
-						}
-
-						cards = card.Player().SearchAction(
-							cards,
-							"Select a card",
-							1,
-							1,
-							false)
-
-						for _, c := range cards {
-							if err := c.MoveCard(match.GRAVEYARD); err != nil {
-								logrus.Debug(err)
+				switch event := ctx.Event().(type) {
+				case *match.PlayCardEvent:
+					if event.ID == card.ID() {
+						card.SpellCast(
+							ctx,
+							func() []*match.Card {
+								return card.Player().Search(
+									ctx.Match().Opponent(card.Player()).CollectCards(match.TRAPZONE),
+									"Select 1 of your opponents traps",
+									1,
+									1,
+									true)
+							},
+						)
+					}
+				case *match.SpellCast:
+					if event.ID == card.ID() {
+						ctx.ScheduleAfter(func() {
+							for _, c := range event.Targets {
+								if err := c.MoveCard(match.GRAVEYARD); err != nil {
+									logrus.Debug(err)
+								}
+								ctx.Match().Chat("Server", fmt.Sprintf("%s was moved to %s %s by %s", c.Name(), c.Player().Name(), match.GRAVEYARD, card.Name()))
 							}
-							ctx.Match().Chat("Server", fmt.Sprintf("%s was moved to %s %s by %s", c.Name(), c.Player().Name(), match.GRAVEYARD, card.Name()))
-						}
-					})
+						})
+					}
+				default:
+					fx.Spell(card, ctx)
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -327,24 +401,35 @@ func Tailwind() *match.Card {
 		Rank:   0,
 		Civ:    civ.VAYU,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
-					ctx.ScheduleAfter(func() {
-						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							target, err := card.Player().GetCard(event.TargetID)
-							if err != nil {
-								ctx.InterruptFlow()
-								logrus.Debug(err)
-								return
+				switch event := ctx.Event().(type) {
+				case *match.PlayCardEvent:
+					if event.ID == card.ID() {
+						card.SpellCast(
+							ctx,
+							func() []*match.Card {
+								return card.Player().Search(
+									card.Player().CollectCards(match.BATTLEZONE),
+									"Select a creature",
+									1,
+									1,
+									true)
+							},
+						)
+					}
+				case *match.SpellCast:
+					if event.ID == card.ID() {
+						ctx.ScheduleAfter(func() {
+							for _, c := range event.Targets {
+								c.AddCondition(fx.CantBeBlocked)
 							}
-
-							target.AddCondition(fx.CantBeBlocked)
-						}
-					})
+						})
+					}
+				default:
+					fx.Spell(card, ctx)
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -358,26 +443,37 @@ func Tornado() *match.Card {
 		Rank:   1,
 		Civ:    civ.VAYU,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
-					ctx.ScheduleAfter(func() {
-						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							target, err := ctx.Match().Opponent(card.Player()).GetCard(event.TargetID)
-							if err != nil {
-								ctx.InterruptFlow()
-								logrus.Debug(err)
-								return
+				switch event := ctx.Event().(type) {
+				case *match.PlayCardEvent:
+					if event.ID == card.ID() {
+						card.SpellCast(
+							ctx,
+							func() []*match.Card {
+								return card.Player().Search(
+									ctx.Match().Opponent(card.Player()).CollectCards(match.BATTLEZONE),
+									"Select 1 of your opponents creatures",
+									1,
+									1,
+									true)
+							},
+						)
+					}
+				case *match.SpellCast:
+					if event.ID == card.ID() {
+						ctx.ScheduleAfter(func() {
+							for _, c := range event.Targets {
+								if err := c.MoveCard(match.DECK); err != nil {
+									logrus.Debug(err)
+								}
 							}
-
-							if err := target.MoveCard(match.DECK); err != nil {
-								logrus.Debug(err)
-							}
-						}
-					})
+						})
+					}
+				default:
+					fx.Spell(card, ctx)
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -391,24 +487,35 @@ func FrostBreath() *match.Card {
 		Rank:   0,
 		Civ:    civ.APAS,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
-					ctx.ScheduleAfter(func() {
-						if event, ok := ctx.Event().(*match.PlayCardEvent); ok && event.ID == card.ID() {
-							target, err := ctx.Match().Opponent(card.Player()).GetCard(event.TargetID)
-							if err != nil {
-								ctx.InterruptFlow()
-								logrus.Debug(err)
-								return
+				switch event := ctx.Event().(type) {
+				case *match.PlayCardEvent:
+					if event.ID == card.ID() {
+						card.SpellCast(
+							ctx,
+							func() []*match.Card {
+								return card.Player().Search(
+									ctx.Match().Opponent(card.Player()).CollectCards(match.BATTLEZONE),
+									"Select 1 of your opponents creatures",
+									1,
+									1,
+									true)
+							},
+						)
+					}
+				case *match.SpellCast:
+					if event.ID == card.ID() {
+						ctx.ScheduleAfter(func() {
+							for _, c := range event.Targets {
+								c.Tapped = true
 							}
-
-							target.Tapped = true
-						}
-					})
+						})
+					}
+				default:
+					fx.Spell(card, ctx)
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -422,15 +529,15 @@ func TidalWave() *match.Card {
 		Rank:   1,
 		Civ:    civ.APAS,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
+			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
+				if event, ok := ctx.Event().(*match.SpellCast); ok && event.ID == card.ID() {
 					ctx.ScheduleAfter(func() {
 						card.Player().DrawCards(2)
 					})
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -444,15 +551,15 @@ func Amrita() *match.Card {
 		Rank:   1,
 		Civ:    civ.APAS,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
+			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
+				if event, ok := ctx.Event().(*match.SpellCast); ok && event.ID == card.ID() {
 					ctx.ScheduleAfter(func() {
-						card.Player().Heal(card, ctx, 800)
+						card.Player().Heal(card, ctx, 8)
 					})
 				}
 			},
-			fx.Spell,
 		},
 	}
 
@@ -466,17 +573,17 @@ func Blizzard() *match.Card {
 		Rank:   2,
 		Civ:    civ.APAS,
 		Family: family.Spell,
-		Handlers: []match.HandlerFunc{
+		Effects: []match.HandlerFunc{
+			fx.Spell,
 			func(card *match.Card, ctx *match.Context) {
-				if card.AmIPlayed(ctx) {
+				if event, ok := ctx.Event().(*match.SpellCast); ok && event.ID == card.ID() {
 					ctx.ScheduleAfter(func() {
-						for _, c := range ctx.Match().Opponent(card.Player()).GetCreatures() {
+						for _, c := range ctx.Match().Opponent(card.Player()).CollectCards(match.BATTLEZONE) {
 							c.Tapped = true
 						}
 					})
 				}
 			},
-			fx.Spell,
 		},
 	}
 

@@ -17,9 +17,9 @@ func Pipilika() *match.Card {
 		Rank:    0,
 		Civ:     civ.PRITHVI,
 		Family:  family.Insect,
-		Attack:  100,
-		Defence: 100,
-		Handlers: []match.HandlerFunc{
+		Attack:  1,
+		Defence: 1,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.ID == card.ID() {
@@ -41,9 +41,9 @@ func Masaka() *match.Card {
 		Rank:    0,
 		Civ:     civ.PRITHVI,
 		Family:  family.Insect,
-		Attack:  100,
-		Defence: 100,
-		Handlers: []match.HandlerFunc{
+		Attack:  1,
+		Defence: 1,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			fx.Leech,
 		},
@@ -59,8 +59,8 @@ func MahisiPipilika() *match.Card {
 		Rank:    1,
 		Civ:     civ.PRITHVI,
 		Family:  family.Insect,
-		Defence: 200,
-		Handlers: []match.HandlerFunc{
+		Defence: 2,
+		Effects: []match.HandlerFunc{
 			fx.Creature,
 			func(card *match.Card, ctx *match.Context) {
 				if card.Zone() != match.BATTLEZONE {
@@ -75,7 +75,7 @@ func MahisiPipilika() *match.Card {
 						return
 					}
 
-					cards = card.Player().SearchAction(
+					cards = card.Player().Search(
 						match.Filter(cards, func(x *match.Card) bool { return x.Family() == family.Insect }),
 						fmt.Sprintf("Select 1 %s", family.Insect),
 						1,
@@ -94,26 +94,26 @@ func MahisiPipilika() *match.Card {
 				}
 
 				if event, ok := ctx.Event().(*match.GetAttackEvent); ok && event.ID != card.ID() {
-					card, err := card.Player().GetCard(event.ID)
+					card, err := match.GetCard(event.ID, card.Player().CollectCards(match.BATTLEZONE))
 					if err != nil {
 						logrus.Debug(err)
 						return
 					}
 
 					if card.HasFamily(family.Insect, ctx) {
-						event.Attack += 100
+						event.Attack++
 					}
 				}
 
 				if event, ok := ctx.Event().(*match.GetDefenceEvent); ok && event.ID != card.ID() {
-					card, err := card.Player().GetCard(event.ID)
+					card, err := match.GetCard(event.ID, card.Player().CollectCards(match.BATTLEZONE))
 					if err != nil {
 						logrus.Debug(err)
 						return
 					}
 
 					if card.HasFamily(family.Insect, ctx) {
-						event.Defence += 100
+						event.Defence++
 					}
 				}
 			},
