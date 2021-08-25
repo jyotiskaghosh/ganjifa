@@ -44,7 +44,7 @@ func Devolve(card *Card, src *Card) {
 		"Select a card",
 		1,
 		1,
-		true)
+		false)
 
 	if len(cards) < 1 {
 		card.player.match.Destroy(card, src)

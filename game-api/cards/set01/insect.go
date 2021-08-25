@@ -80,7 +80,7 @@ func MahisiPipilika() *match.Card {
 						fmt.Sprintf("Select 1 %s", family.Insect),
 						1,
 						1,
-						true)
+						false)
 
 					for _, c := range cards {
 						if err := c.MoveCard(match.HAND); err != nil {

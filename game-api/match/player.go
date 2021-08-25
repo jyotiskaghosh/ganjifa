@@ -308,6 +308,10 @@ func (p *Player) Search(cards []*Card, text string, min int, max int, cancellabl
 
 	result := make([]*Card, 0)
 
+	if len(cards) < 1 {
+		return result
+	}
+
 	p.match.NewAction(p, cards, min, max, text, cancellable)
 	defer p.match.CloseAction(p)
 

@@ -10,10 +10,6 @@ import (
 
 // Creature has default behaviours for creatures
 func Creature(card *match.Card, ctx *match.Context) {
-	canAttack := func() bool {
-		return !card.Tapped && card.Zone() == match.BATTLEZONE && card.GetAttack(ctx) > 0
-	}
-
 	opponent := ctx.Match().Opponent(card.Player())
 
 	switch event := ctx.Event().(type) {
@@ -81,21 +77,25 @@ func Creature(card *match.Card, ctx *match.Context) {
 	// When attacking player
 	case *match.AttackPlayer:
 		if event.ID == card.ID() {
-			if !canAttack() {
+			if card.Tapped || card.Zone() != match.BATTLEZONE || card.GetAttack(ctx) <= 0 {
 				ctx.InterruptFlow()
 				return
 			}
 
 			ctx.ScheduleAfter(func() {
-				text := fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), opponent.Name())
-
 				opponent.Action = make(chan []string)
 				opponent.Cancel = make(chan bool)
 
 				defer close(opponent.Cancel)
 				defer close(opponent.Action)
 
+				text := fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), opponent.Name())
 				cards := match.Filter(opponent.CollectCards(match.BATTLEZONE, match.TRAPZONE), func(c *match.Card) bool { return !c.Tapped })
+
+				if len(cards) < 1 {
+					opponent.Damage(card, ctx, card.GetAttack(ctx))
+					return
+				}
 
 				ctx.Match().NewAction(opponent, cards, 1, 1, text, true)
 				defer ctx.Match().CloseAction(opponent)
@@ -145,12 +145,18 @@ func Creature(card *match.Card, ctx *match.Context) {
 									return
 								}
 
-								if !canAttack() {
+								if card.Tapped || card.Zone() != match.BATTLEZONE || card.GetAttack(ctx) <= 0 {
 									ctx.InterruptFlow()
 									return
 								}
 
+								text := fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), opponent.Name())
 								cards = match.Filter(opponent.CollectCards(match.BATTLEZONE, match.TRAPZONE), func(c *match.Card) bool { return !c.Tapped })
+
+								if len(cards) < 1 {
+									opponent.Damage(card, ctx, card.GetAttack(ctx))
+									return
+								}
 
 								// refreshes the action
 								ctx.Match().NewAction(opponent, cards, 1, 1, text, true)
@@ -170,11 +176,6 @@ func Creature(card *match.Card, ctx *match.Context) {
 	// When attacking creature
 	case *match.AttackCreature:
 		if event.ID == card.ID() {
-			if !canAttack() {
-				ctx.InterruptFlow()
-				return
-			}
-
 			target, err := match.GetCard(
 				event.TargetID,
 				match.Filter(opponent.CollectCards(match.BATTLEZONE), func(c *match.Card) bool { return c.Tapped }),
@@ -185,16 +186,28 @@ func Creature(card *match.Card, ctx *match.Context) {
 				return
 			}
 
-			ctx.ScheduleAfter(func() {
-				text := fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), target.Name())
+			if card.Tapped ||
+				card.Zone() != match.BATTLEZONE ||
+				card.GetAttack(ctx) <= 0 ||
+				target.Zone() != match.BATTLEZONE {
+				ctx.InterruptFlow()
+				return
+			}
 
+			ctx.ScheduleAfter(func() {
 				opponent.Action = make(chan []string)
 				opponent.Cancel = make(chan bool)
 
 				defer close(opponent.Cancel)
 				defer close(opponent.Action)
 
+				text := fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), target.Name())
 				cards := match.Filter(opponent.CollectCards(match.BATTLEZONE, match.TRAPZONE), func(c *match.Card) bool { return !c.Tapped })
+
+				if len(cards) < 1 {
+					ctx.Match().Battle(card, target, false)
+					return
+				}
 
 				ctx.Match().NewAction(opponent, cards, 1, 1, text, true)
 				defer ctx.Match().CloseAction(opponent)
@@ -244,12 +257,32 @@ func Creature(card *match.Card, ctx *match.Context) {
 									return
 								}
 
-								if !canAttack() {
+								// Update target
+								target, err := match.GetCard(
+									event.TargetID,
+									match.Filter(opponent.CollectCards(match.BATTLEZONE), func(c *match.Card) bool { return c.Tapped }),
+								)
+								if err != nil {
+									logrus.Debug(err)
 									ctx.InterruptFlow()
 									return
 								}
 
+								if card.Tapped ||
+									card.Zone() != match.BATTLEZONE ||
+									card.GetAttack(ctx) <= 0 ||
+									target.Zone() != match.BATTLEZONE {
+									ctx.InterruptFlow()
+									return
+								}
+
+								text = fmt.Sprintf("%s is attacking %s, you may play a set down card or block with a creature", card.Name(), target.Name())
 								cards = match.Filter(opponent.CollectCards(match.BATTLEZONE, match.TRAPZONE), func(c *match.Card) bool { return !c.Tapped })
+
+								if len(cards) < 1 {
+									ctx.Match().Battle(card, target, false)
+									return
+								}
 
 								// refreshes the action
 								ctx.Match().NewAction(opponent, cards, 1, 1, text, true)
@@ -259,17 +292,6 @@ func Creature(card *match.Card, ctx *match.Context) {
 						}
 					case cancel := <-opponent.Cancel:
 						if cancel {
-							// Update target
-							target, err := match.GetCard(
-								event.TargetID,
-								match.Filter(opponent.CollectCards(match.BATTLEZONE), func(c *match.Card) bool { return c.Tapped }),
-							)
-							if err != nil {
-								logrus.Debug(err)
-								ctx.InterruptFlow()
-								return
-							}
-
 							ctx.Match().Battle(card, target, false)
 							return
 						}

@@ -31,7 +31,7 @@ func EnergySurge() *match.Card {
 									"Select 1 of your creatures",
 									1,
 									1,
-									true)
+									false)
 							},
 						)
 					}
@@ -75,7 +75,7 @@ func Fireball() *match.Card {
 									"Select 1 of your opponents creatures",
 									1,
 									1,
-									true)
+									false)
 							},
 						)
 					}
@@ -149,7 +149,7 @@ func MagmaGeyser() *match.Card {
 									"Select 1 of your opponents creatures",
 									1,
 									1,
-									true)
+									false)
 							},
 						)
 					}
@@ -198,7 +198,7 @@ func Degenerate() *match.Card {
 									"Select a creature",
 									1,
 									1,
-									true)
+									false)
 							},
 						)
 					}
@@ -240,7 +240,7 @@ func LeechLife() *match.Card {
 									"Select 1 of your creatures",
 									1,
 									1,
-									true)
+									false)
 							},
 						)
 					}
@@ -288,7 +288,7 @@ func RapidEvolution() *match.Card {
 									"Select a creature",
 									1,
 									1,
-									true)
+									false)
 							},
 						)
 					}
@@ -328,7 +328,7 @@ func AirMail() *match.Card {
 							"Select a card",
 							1,
 							1,
-							true,
+							false,
 						)
 
 						for _, c := range cards {
@@ -369,7 +369,7 @@ func Whirlwind() *match.Card {
 									"Select 1 of your opponents traps",
 									1,
 									1,
-									true)
+									false)
 							},
 						)
 					}
@@ -414,7 +414,7 @@ func Tailwind() *match.Card {
 									"Select a creature",
 									1,
 									1,
-									true)
+									false)
 							},
 						)
 					}
@@ -456,7 +456,7 @@ func Tornado() *match.Card {
 									"Select 1 of your opponents creatures",
 									1,
 									1,
-									true)
+									false)
 							},
 						)
 					}
@@ -500,7 +500,7 @@ func FrostBreath() *match.Card {
 									"Select 1 of your opponents creatures",
 									1,
 									1,
-									true)
+									false)
 							},
 						)
 					}
